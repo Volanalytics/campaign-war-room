@@ -6,16 +6,474 @@
     <title>Action Hub</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .action-widget {
+            border-left: 4px solid #0d6efd;
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .post-card {
+            margin-bottom: 20px;
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+            transition: transform 0.2s;
+        }
+        .post-card:hover {
+            transform: translateY(-2px);
+        }
+        .category-badge {
+            font-size: 0.75em;
+            padding: 0.25em 0.6em;
+        }
+        .sidebar-item {
+            border-radius: 6px;
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            transition: background-color 0.2s;
+        }
+        .sidebar-item:hover {
+            background-color: #f0f2f5;
+        }
+        .sidebar-item.active {
+            background-color: #e7f1ff;
+            font-weight: 500;
+        }
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 500;
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #28a745;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            border: 1px solid white;
+        }
+        .post-content {
+            white-space: pre-line;
+        }
+    </style>
 </head>
 <body>
-    <!-- Your HTML content will go here -->
-    <div class="container">
-        <h1>Action Hub</h1>
-        <p>Email to forum system is ready for setup!</p>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" style="min-height: 100vh; padding: 20px;">
+                <div class="d-flex flex-column h-100">
+                    <h5 class="mb-4">Action Hub</h5>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <strong>CATEGORIES</strong>
+                        </div>
+                        <div id="categories-list">
+                            <div class="sidebar-item active d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-inbox"></i> All Posts</span>
+                                <span class="badge bg-primary rounded-pill" id="all-count">0</span>
+                            </div>
+                            <div class="sidebar-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-star"></i> Urgent</span>
+                                <span class="badge bg-danger rounded-pill">0</span>
+                            </div>
+                            <div class="sidebar-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-envelope"></i> Email Action</span>
+                                <span class="badge bg-primary rounded-pill">0</span>
+                            </div>
+                            <div class="sidebar-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-share"></i> Social Media</span>
+                                <span class="badge bg-primary rounded-pill">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <strong>TEAM MEMBERS</strong>
+                        </div>
+                        <div id="team-members">
+                            <div class="sidebar-item d-flex align-items-center">
+                                <div class="position-relative me-2">
+                                    <div class="user-avatar bg-primary">JD</div>
+                                    <div class="status-indicator"></div>
+                                </div>
+                                <span>John Doe</span>
+                            </div>
+                            <div class="sidebar-item d-flex align-items-center">
+                                <div class="position-relative me-2">
+                                    <div class="user-avatar bg-success">AS</div>
+                                    <div class="status-indicator"></div>
+                                </div>
+                                <span>Anna Smith</span>
+                            </div>
+                            <div class="sidebar-item d-flex align-items-center">
+                                <div class="position-relative me-2">
+                                    <div class="user-avatar bg-info">RJ</div>
+                                </div>
+                                <span>Robert Johnson</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-auto">
+                        <div class="border-top pt-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Email Inbox</strong>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                            </div>
+                            <div class="text-muted small mt-1">
+                                <i class="bi bi-envelope"></i> info@vpterdatahouse.com
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main content -->
+            <div class="col-md-9 col-lg-10 ms-sm-auto px-md-4 py-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Action Feed</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-sort-down"></i> Sort by
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                                <li><a class="dropdown-item active" href="#">Newest first</a></li>
+                                <li><a class="dropdown-item" href="#">Oldest first</a></li>
+                                <li><a class="dropdown-item" href="#">Priority</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="post-loading" class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading posts...</p>
+                </div>
+                
+                <div id="posts-container">
+                    <!-- Posts will be loaded here -->
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/main.js"></script>
+    <script>
+        // Sample data to show the interface
+        const samplePosts = [
+            {
+                id: 1,
+                title: "Urgent: Website Down Issue",
+                content: "The client website at client.example.com is currently down. Initial investigation shows it might be a database connection issue. Need someone to look at this immediately.\n\nError log shows: Connection refused (111)",
+                sender: "support@vpterdatahouse.com",
+                recipient: "info@vpterdatahouse.com",
+                category: "Urgent",
+                created_at: "2025-04-19T10:23:00",
+                action_type: "technical_support",
+                status: "new"
+            },
+            {
+                id: 2,
+                title: "Help spread the word: New product launch next week",
+                content: "We're launching our new data visualization tool next week and need help spreading the word on social media.\n\nHere's the announcement text to share:\n\n'Excited to announce our new DataViz Pro tool launching next Tuesday! Real-time dashboards for your most complex datasets. #DataVisualization #Analytics'",
+                sender: "marketing@vpterdatahouse.com",
+                recipient: "info@vpterdatahouse.com",
+                category: "Social Media",
+                created_at: "2025-04-18T15:45:00",
+                action_type: "social_share",
+                status: "new"
+            },
+            {
+                id: 3,
+                title: "Client Email Response Needed: Project Timeline",
+                content: "The client has asked for an updated timeline on the data migration project. Can someone from the project team draft a response outlining our current progress and expected completion dates?\n\nSpecifically they want to know:\n1. When the schema mapping will be completed\n2. Expected start date for the test migration\n3. Final migration timeline",
+                sender: "accounts@vpterdatahouse.com",
+                recipient: "info@vpterdatahouse.com",
+                category: "Email Action",
+                created_at: "2025-04-17T09:30:00",
+                action_type: "email_response",
+                status: "completed"
+            }
+        ];
+
+        // Function to generate action widgets based on post type
+        function generateActionWidget(post) {
+            let widgetHTML = '<div class="action-widget">';
+            
+            switch(post.action_type) {
+                case 'technical_support':
+                    widgetHTML += `
+                        <h5>Technical Support Actions</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Status Update</label>
+                            <select class="form-select">
+                                <option value="investigating" selected>Investigating</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="markAsComplete(${post.id})">Mark as Complete</button>
+                            <button class="btn btn-outline-secondary" onclick="assignToTeam(${post.id})">Assign to Team</button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'social_share':
+                    const shareText = encodeURIComponent(post.content.split('\n\n')[2].replace(/'/g, ''));
+                    widgetHTML += `
+                        <h5>Social Media Actions</h5>
+                        <div class="mb-3">
+                            <p>Share this announcement on your social platforms:</p>
+                            <div class="p-2 border rounded bg-light">
+                                ${post.content.split('\n\n')[2].replace(/'/g, '')}
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="https://twitter.com/intent/tweet?text=${shareText}" target="_blank" class="btn btn-primary">
+                                <i class="bi bi-twitter"></i> Share on Twitter
+                            </a>
+                            <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://vpterdatahouse.com&summary=${shareText}" target="_blank" class="btn btn-outline-primary">
+                                <i class="bi bi-linkedin"></i> Share on LinkedIn
+                            </a>
+                            <button class="btn btn-outline-secondary" onclick="markAsComplete(${post.id})">Mark as Shared</button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'email_response':
+                    widgetHTML += `
+                        <h5>Email Response Actions</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Draft Response</label>
+                            <textarea class="form-control" rows="4" placeholder="Type your response here..."></textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="sendEmailResponse(${post.id})">
+                                <i class="bi bi-envelope"></i> Send Response
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="assignToTeam(${post.id})">
+                                <i class="bi bi-people"></i> Assign to Team
+                            </button>
+                        </div>
+                    `;
+                    break;
+                    
+                default:
+                    widgetHTML += `
+                        <h5>Actions</h5>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="markAsComplete(${post.id})">Take Action</button>
+                            <button class="btn btn-outline-secondary" onclick="assignToTeam(${post.id})">Assign to Team</button>
+                        </div>
+                    `;
+            }
+            
+            widgetHTML += '</div>';
+            return widgetHTML;
+        }
+
+        // Function to format dates
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                return `Today at ${hours}:${minutes}`;
+            } else if (diffDays === 1) {
+                return 'Yesterday';
+            } else if (diffDays < 7) {
+                return date.toLocaleString('en-us', { weekday: 'long' });
+            } else {
+                return date.toLocaleDateString();
+            }
+        }
+
+        // Function to render posts
+        function renderPosts(posts) {
+            const postsContainer = document.getElementById('posts-container');
+            document.getElementById('post-loading').style.display = 'none';
+            
+            if (posts.length === 0) {
+                postsContainer.innerHTML = '<div class="alert alert-info">No posts yet. Send an email to create the first post!</div>';
+                return;
+            }
+            
+            let html = '';
+            posts.forEach(post => {
+                const formattedDate = formatDate(post.created_at);
+                let statusBadge = '';
+                
+                if (post.status === 'new') {
+                    statusBadge = '<span class="badge bg-success me-1">New</span>';
+                } else if (post.status === 'completed') {
+                    statusBadge = '<span class="badge bg-secondary me-1">Completed</span>';
+                }
+                
+                html += `
+                    <div class="card post-card">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <div>
+                                ${statusBadge}
+                                <span class="badge bg-${getCategoryColor(post.category)} category-badge me-2">${post.category}</span>
+                                <strong>${post.title}</strong>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-bookmark-plus"></i> Save</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-forward"></i> Forward</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-archive"></i> Archive</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="user-avatar bg-secondary me-2">
+                                        ${getInitials(post.sender)}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">${post.sender}</div>
+                                        <div class="text-muted small">to ${post.recipient}</div>
+                                    </div>
+                                    <div class="ms-auto text-muted small">
+                                        ${formattedDate}
+                                    </div>
+                                </div>
+                                <div class="post-content">${post.content}</div>
+                            </div>
+                            
+                            ${generateActionWidget(post)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            postsContainer.innerHTML = html;
+            
+            // Update category counts
+            updateCategoryCounts(posts);
+        }
+        
+        // Function to get initials from email address
+        function getInitials(email) {
+            const name = email.split('@')[0];
+            if (name.includes('.')) {
+                const parts = name.split('.');
+                return (parts[0][0] + parts[1][0]).toUpperCase();
+            }
+            return name.substring(0, 2).toUpperCase();
+        }
+        
+        // Function to get appropriate color for category badge
+        function getCategoryColor(category) {
+            switch(category) {
+                case 'Urgent': return 'danger';
+                case 'Social Media': return 'info';
+                case 'Email Action': return 'warning';
+                default: return 'primary';
+            }
+        }
+        
+        // Function to update category counts
+        function updateCategoryCounts(posts) {
+            // Count posts by category
+            const categoryCounts = { 'All': posts.length };
+            posts.forEach(post => {
+                if (post.category) {
+                    categoryCounts[post.category] = (categoryCounts[post.category] || 0) + 1;
+                }
+            });
+            
+            // Update the "All" count
+            document.getElementById('all-count').textContent = categoryCounts['All'] || 0;
+            
+            // Update other category counts
+            const categoryElements = document.querySelectorAll('#categories-list .sidebar-item');
+            categoryElements.forEach(element => {
+                const category = element.querySelector('span:first-child').textContent.trim();
+                if (category.includes('Urgent')) {
+                    element.querySelector('.badge').textContent = categoryCounts['Urgent'] || 0;
+                } else if (category.includes('Email Action')) {
+                    element.querySelector('.badge').textContent = categoryCounts['Email Action'] || 0;
+                } else if (category.includes('Social Media')) {
+                    element.querySelector('.badge').textContent = categoryCounts['Social Media'] || 0;
+                }
+            });
+        }
+        
+        // Action functions (stubs for now)
+        function markAsComplete(postId) {
+            alert(`Post ${postId} marked as complete!`);
+            // In a real implementation, this would update the database
+        }
+        
+        function assignToTeam(postId) {
+            alert(`Post ${postId} ready to be assigned. Team selection would open here.`);
+            // In a real implementation, this would open a team selection dialog
+        }
+        
+        function sendEmailResponse(postId) {
+            const textarea = document.querySelector(`#posts-container .card:nth-child(${postId}) textarea`);
+            const response = textarea.value.trim();
+            if (response) {
+                alert(`Email response submitted: ${response}`);
+                // In a real implementation, this would send the email and update the database
+            } else {
+                alert('Please write a response first');
+            }
+        }
+
+        // Initialize with sample data
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                renderPosts(samplePosts);
+            }, 1000); // Simulating loading delay
+        });
+        
+        // In a real implementation, this function would fetch posts from the server
+        function fetchPosts() {
+            fetch('/api/posts')
+                .then(response => response.json())
+                .then(data => {
+                    renderPosts(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching posts:', error);
+                    document.getElementById('posts-container').innerHTML = 
+                        '<div class="alert alert-danger">Error loading posts. Please try again later.</div>';
+                });
+        }
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
+<script src="/js/supabase-client.js"></script>
+<script src="/js/main.js"></script>
 </body>
 </html>
+
