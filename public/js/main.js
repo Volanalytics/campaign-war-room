@@ -341,6 +341,100 @@ function generateActionWidget(post) {
     return widgetHTML;
 }
 
+// Function to add a new comment
+async function addComment(postId, button) {
+  // Get the comment text
+  const commentSection = button.closest('.add-comment');
+  const commentInput = commentSection.querySelector('.comment-input');
+  const commentText = commentInput.value.trim();
+  
+  if (!commentText) {
+    alert('Please enter a comment');
+    return;
+  }
+  
+  // Create comment object
+  const newComment = {
+    post_id: postId,
+    user_id: 'user@voterdatahouse.com', // This will be replaced with the actual user ID after authentication
+    content: commentText,
+    created_at: new Date().toISOString()
+  };
+  
+  try {
+    console.log('Attempting to save comment to Supabase:', newComment);
+    
+    // Save to Supabase
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('comments')
+        .insert([newComment]);
+        
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Comment saved successfully:', data);
+      
+      // Reload the comments for this post
+      loadCommentsForPost(postId, button);
+      
+      // Clear the input
+      commentInput.value = '';
+    } else {
+      // Add to sample data if Supabase not available
+      console.warn('Supabase client not available, using sample data');
+      // Find the post in sample data
+      const post = campaignPosts.find(p => p.id === postId);
+      if (post) {
+        if (!post.comments) post.comments = [];
+        post.comments.push({...newComment, id: Date.now()});
+        
+        // Update the comments section
+        const commentsSection = button.closest('.comments-section');
+        const commentsList = commentsSection.querySelector('.comments-list');
+        commentsList.innerHTML = renderComments(post.comments);
+      }
+      
+      // Clear the input
+      commentInput.value = '';
+    }
+  } catch (error) {
+    console.error('Error saving comment:', error);
+    alert('Failed to save comment. Please try again.');
+  }
+}
+
+// Function to load comments for a specific post
+async function loadCommentsForPost(postId, element) {
+  try {
+    if (supabaseClient) {
+      console.log(`Loading comments for post ${postId}...`);
+      
+      const { data: comments, error } = await supabaseClient
+        .from('comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+        
+      if (error) {
+        console.error('Error loading comments:', error);
+        throw error;
+      }
+      
+      console.log(`Comments loaded:`, comments);
+      
+      // Find the comments section and update it
+      const commentsSection = element.closest('.comments-section');
+      const commentsList = commentsSection.querySelector('.comments-list');
+      commentsList.innerHTML = renderComments(comments);
+    }
+  } catch (error) {
+    console.error('Error loading comments:', error);
+  }
+}
+
 // Function to render comments for a post
 function renderComments(comments) {
     if (!comments || comments.length === 0) {
