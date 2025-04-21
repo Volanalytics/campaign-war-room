@@ -527,3 +527,187 @@ function sendEmailResponse(postId) {
         }
     }
 }
+
+// Add this code to your main.js file or to a separate script file that's included in your HTML
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Setting up New Action button handler');
+    
+    // Get the New Action button
+    const newActionButton = document.querySelector('button[data-bs-toggle="modal"][data-bs-target="#newPostModal"]');
+    
+    // If the button uses a different selector, try one of these:
+    // const newActionButton = document.getElementById('newActionButton');
+    // const newActionButton = document.querySelector('.btn-primary:contains("New Action")');
+    // const newActionButton = document.querySelector('[data-bs-target="#newPostModal"]');
+    
+    if (newActionButton) {
+        console.log('New Action button found');
+        
+        // Ensure the button is properly set up for Bootstrap modal
+        if (!newActionButton.hasAttribute('data-bs-toggle') || !newActionButton.hasAttribute('data-bs-target')) {
+            newActionButton.setAttribute('data-bs-toggle', 'modal');
+            newActionButton.setAttribute('data-bs-target', '#newPostModal');
+        }
+        
+        // Add a click event listener as a backup
+        newActionButton.addEventListener('click', function(event) {
+            console.log('New Action button clicked');
+            
+            // Try to open the modal using Bootstrap's API
+            try {
+                const myModal = new bootstrap.Modal(document.getElementById('newPostModal'));
+                myModal.show();
+            } catch (error) {
+                console.error('Error opening modal:', error);
+                
+                // Fallback: try direct manipulation if Bootstrap API fails
+                const modal = document.getElementById('newPostModal');
+                if (modal) {
+                    modal.classList.add('show');
+                    modal.style.display = 'block';
+                    document.body.classList.add('modal-open');
+                    
+                    // Add backdrop
+                    const backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    document.body.appendChild(backdrop);
+                }
+            }
+        });
+    } else {
+        console.warn('New Action button not found');
+    }
+    
+    // Also ensure the form submission in the modal works
+    const newPostForm = document.getElementById('newPostForm');
+    if (newPostForm) {
+        console.log('New Post form found');
+        
+        newPostForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            console.log('Form submitted');
+            
+            // Get form data
+            const formData = new FormData(newPostForm);
+            const postData = {
+                title: formData.get('title'),
+                content: formData.get('content'),
+                category: formData.get('category'),
+                action_type: determineActionType(formData.get('title'), formData.get('content')),
+                sender: 'user@voterdatahouse.com',
+                recipient: 'team@voterdatahouse.com',
+                status: 'new',
+                created_at: new Date().toISOString()
+            };
+            
+            console.log('New post data:', postData);
+            
+            // Add the new post to the UI
+            addNewPost(postData);
+            
+            // Close the modal
+            const myModal = bootstrap.Modal.getInstance(document.getElementById('newPostModal'));
+            if (myModal) {
+                myModal.hide();
+            } else {
+                // Fallback if Bootstrap API isn't available
+                document.getElementById('newPostModal').classList.remove('show');
+                document.getElementById('newPostModal').style.display = 'none';
+                document.body.classList.remove('modal-open');
+                
+                // Remove backdrop
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                }
+            }
+            
+            // Reset the form
+            newPostForm.reset();
+        });
+    } else {
+        console.warn('New Post form not found');
+    }
+});
+
+// Function to add a new post to the UI
+function addNewPost(postData) {
+    // Generate a unique ID for the new post
+    postData.id = Date.now();
+    
+    // Create the HTML for the new post
+    const formattedDate = formatDate(postData.created_at);
+    let statusBadge = '<span class="badge bg-success me-1">New</span>';
+    
+    const postHtml = `
+        <div class="card post-card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <div>
+                    ${statusBadge}
+                    <span class="badge bg-${getCategoryColor(postData.category)} category-badge me-2">${postData.category}</span>
+                    <strong>${postData.title}</strong>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-bookmark-plus"></i> Save</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-forward"></i> Forward</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-archive"></i> Archive</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="user-avatar bg-secondary me-2">
+                            ${getInitials(postData.sender)}
+                        </div>
+                        <div>
+                            <div class="fw-bold">${postData.sender}</div>
+                            <div class="text-muted small">to ${postData.recipient}</div>
+                        </div>
+                        <div class="ms-auto text-muted small">
+                            ${formattedDate}
+                        </div>
+                    </div>
+                    <div class="post-content">${postData.content.replace(/\n/g, '<br>')}</div>
+                </div>
+                
+                ${generateActionWidget(postData)}
+            </div>
+        </div>
+    `;
+    
+    // Add the new post to the beginning of the posts container
+    const postsContainer = document.getElementById('posts-container');
+    postsContainer.insertAdjacentHTML('afterbegin', postHtml);
+    
+    // Update the category counts
+    const allPosts = document.querySelectorAll('.post-card');
+    updateCategoryCounts(Array.from(allPosts).map(post => {
+        // Extract category from the post
+        const categoryBadge = post.querySelector('.category-badge');
+        return {
+            category: categoryBadge ? categoryBadge.textContent : 'General'
+        };
+    }));
+}
+
+// Helper function to determine action type based on content
+function determineActionType(title, content) {
+    const combinedText = (title + ' ' + content).toLowerCase();
+    
+    if (combinedText.includes('urgent') || combinedText.includes('emergency') || combinedText.includes('asap')) {
+        return 'technical_support';
+    } else if (combinedText.includes('share') || combinedText.includes('post') || combinedText.includes('social media')) {
+        return 'social_share';
+    } else if (combinedText.includes('respond') || combinedText.includes('reply') || combinedText.includes('email')) {
+        return 'email_response';
+    }
+    
+    return 'general';
+}
