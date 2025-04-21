@@ -876,3 +876,46 @@ document.addEventListener('DOMContentLoaded', function() {
     console.warn('Submit button not found: #submitNewPost');
   }
 });
+// Direct fix for the aria-hidden warning
+document.addEventListener('DOMContentLoaded', function() {
+  // Get all cancel buttons in modals
+  const cancelButtons = document.querySelectorAll('.modal .btn-secondary[data-bs-dismiss="modal"]');
+  
+  cancelButtons.forEach(button => {
+    // Add click event that explicitly removes focus before the modal closes
+    button.addEventListener('mousedown', function() {
+      // Use mousedown instead of click to catch the event before the modal starts closing
+      this.blur();
+      
+      // Force focus somewhere else, like the body
+      document.body.focus();
+      
+      // For modals with forms, try to reset the form
+      const form = this.closest('.modal').querySelector('form');
+      if (form) form.reset();
+    });
+  });
+  
+  // Also handle the X button (close button) in modal headers
+  const closeButtons = document.querySelectorAll('.modal .btn-close');
+  closeButtons.forEach(button => {
+    button.addEventListener('mousedown', function() {
+      this.blur();
+      document.body.focus();
+    });
+  });
+  
+  // Add inert attribute dynamically when modal is hidden
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    modal.addEventListener('hide.bs.modal', function() {
+      // Add inert attribute as the modal starts to hide
+      this.setAttribute('inert', '');
+      
+      // Remove inert after the modal is fully hidden
+      this.addEventListener('hidden.bs.modal', function() {
+        this.removeAttribute('inert');
+      }, { once: true }); // only trigger once
+    });
+  });
+});
