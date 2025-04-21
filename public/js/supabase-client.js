@@ -2,18 +2,19 @@
 const SUPABASE_URL = 'https://xhqzjelmxblchcdcdigv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhocXpqZWxteGJsY2hjZGNkaWd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NDIwNzAsImV4cCI6MjA2MDQxODA3MH0.9IaodsGAvJXHwndCCTms3JT2f5dBqNNIrxE0EqOhT7s';
 
-// Initialize the Supabase client
-const supabase = window.supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
-// Try different ways the Supabase client might be exposed
-let supabase;
-if (typeof supabaseJs !== 'undefined') {
-    supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
-} else if (typeof window.supabaseJs !== 'undefined') {
-    supabase = window.supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
-} else if (typeof window.supabase !== 'undefined') {
+// Initialize client using the globally available supabase object
+let supabase = null;
+
+try {
+  // Try to initialize using the UMD global
+  if (typeof window.supabase !== 'undefined') {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-} else {
-    console.error('Supabase client library not found. Make sure the CDN script is loaded correctly.');
+    console.log('Supabase client initialized successfully');
+  } else {
+    console.error('Supabase client library not found in global scope');
+  }
+} catch (error) {
+  console.error('Error initializing Supabase client:', error);
 }
 // Function to fetch posts from Supabase
 async function fetchPosts() {
