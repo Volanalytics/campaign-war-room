@@ -35,11 +35,4 @@ jobs:
         EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       run: php server/email/github-email-poller.php
-      
-    - name: Upload logs
-      if: always()
-      uses: actions/upload-artifact@v2
-      with:
-        name: email-polling-logs
-        path: server/email/github-poll-email.log
-        retention-days: 5
+  
