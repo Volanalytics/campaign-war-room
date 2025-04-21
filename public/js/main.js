@@ -919,3 +919,49 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+// Place this at the end of your main.js file
+document.addEventListener('DOMContentLoaded', function() {
+  // Override Bootstrap's modal hide method to properly handle focus
+  if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+    // Store original hide method
+    const originalHide = bootstrap.Modal.prototype.hide;
+    
+    // Override the hide method
+    bootstrap.Modal.prototype.hide = function() {
+      // Get all focusable elements in the modal
+      const focusableElements = this._element.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      
+      // Remove focus from all elements
+      focusableElements.forEach(el => el.blur());
+      
+      // Add inert attribute to the modal
+      this._element.setAttribute('inert', '');
+      
+      // Call the original hide method
+      const result = originalHide.apply(this, arguments);
+      
+      // Remove inert attribute after transition
+      setTimeout(() => {
+        this._element.removeAttribute('inert');
+      }, 500); // Wait for transition to complete
+      
+      return result;
+    };
+  }
+  
+  // Additional direct fix for cancel/close buttons
+  document.querySelectorAll('.modal .btn-close, .modal .btn-secondary').forEach(button => {
+    button.addEventListener('mousedown', function() {
+      // Immediately remove focus and prevent it from being set again
+      this.blur();
+      this.setAttribute('tabindex', '-1');
+      
+      // Reset after modal is fully closed
+      setTimeout(() => {
+        this.removeAttribute('tabindex');
+      }, 500);
+    });
+  });
+});
