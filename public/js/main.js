@@ -1,294 +1,183 @@
-// Main JavaScript file
+// Main JavaScript file for Action Hub
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Action Hub initialized');
     
-    // Fetch posts on load
+    // Fetch posts when the page loads
     fetchPosts();
     
-    // Set up event listeners for the sidebar filters
-    setupSidebarFilters();
-    
-    // Set up event listener for the sort dropdown
-    setupSortDropdown();
+    // Setup event listeners for modals
+    setupModalListeners();
 });
 
-// Add this code to your main.js file to improve modal focus management
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Fix for modal focus management
-  const newPostModal = document.getElementById('newPostModal');
-  if (newPostModal) {
-    // Store the element that had focus before opening the modal
-    let previouslyFocusedElement = null;
-    
-    // Listen for modal open
-    newPostModal.addEventListener('show.bs.modal', function() {
-      // Save the current focus
-      previouslyFocusedElement = document.activeElement;
-    });
-    
-    // Listen for modal close
-    newPostModal.addEventListener('hidden.bs.modal', function() {
-      // Clear focus from any element inside the modal
-      const focusedElementInModal = newPostModal.querySelector(':focus');
-      if (focusedElementInModal) {
-        focusedElementInModal.blur();
-      }
-      
-      // Return focus to the element that had focus before the modal was opened
-      if (previouslyFocusedElement) {
-        // Small delay to ensure the modal is fully hidden
-        setTimeout(() => {
-          previouslyFocusedElement.focus();
-        }, 10);
-      }
-    });
-    
-    // Ensure the submit button properly releases focus when clicked
-    const submitButton = document.getElementById('submitNewPost');
-    if (submitButton) {
-      submitButton.addEventListener('click', function() {
-        // Release focus before the modal starts to close
-        this.blur();
-      });
-    }
-  }
-
-  // Apply the same fix to other modals if needed
-  const modals = document.querySelectorAll('.modal');
-  modals.forEach(modal => {
-    if (modal.id !== 'newPostModal') { // Skip the one we already handled
-      let previousFocus = null;
-      
-      modal.addEventListener('show.bs.modal', function() {
-        previousFocus = document.activeElement;
-      });
-      
-      modal.addEventListener('hidden.bs.modal', function() {
-        const focusedElement = modal.querySelector(':focus');
-        if (focusedElement) {
-          focusedElement.blur();
-        }
-        
-        if (previousFocus) {
-          setTimeout(() => {
-            previousFocus.focus();
-          }, 10);
-        }
-      });
-      
-      // Find and handle submit buttons in this modal
-      const submitBtns = modal.querySelectorAll('.btn-primary');
-      submitBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-          this.blur();
+// Function to setup modal event listeners
+function setupModalListeners() {
+    // New Action modal
+    const newActionBtn = document.getElementById('newActionBtn');
+    if (newActionBtn) {
+        newActionBtn.addEventListener('click', function() {
+            openModal('newActionModal');
         });
-      });
     }
-  });
-});
+    
+    // Close buttons for modals
+    const closeButtons = document.querySelectorAll('.modal .btn-close, .modal .close-btn');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const modalId = this.closest('.modal').id;
+            closeModal(modalId);
+        });
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            closeModal(event.target.id);
+        }
+    });
+}
 
-// Function to fetch posts
-async function fetchPosts(category = null, sort = 'newest') {
-    // Show loading indicator
+// Function to open a modal
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+        
+        // Add backdrop if it doesn't exist
+        if (!document.querySelector('.modal-backdrop')) {
+            const backdrop = document.createElement('div');
+            backdrop.classList.add('modal-backdrop', 'fade', 'show');
+            document.body.appendChild(backdrop);
+        }
+    }
+}
+
+// Function to close a modal
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+        
+        // Remove backdrop
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+    }
+}
+
+// Function to fetch posts from the API
+async function fetchPosts() {
     document.getElementById('post-loading').style.display = 'block';
-    document.getElementById('posts-container').innerHTML = '';
     
     try {
-        // Use the supabaseClient defined in your auth.js file
-        let query = supabaseClient.from('posts').select('*');
-        
-        // Add category filter if provided
-        if (category && category !== 'All Posts' && category !== 'All Actions') {
-            const categoryName = category.replace(' Posts', '').trim();
-            query = query.eq('category', categoryName);
+        const response = await fetch('/api/posts');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        // Add sorting
-        if (sort === 'newest') {
-            query = query.order('created_at', { ascending: false });
-        } else if (sort === 'oldest') {
-            query = query.order('created_at', { ascending: true });
-        } else if (sort === 'priority') {
-            // For priority sorting, we need to handle this after fetching the data
-            // Since Supabase doesn't support custom sort expressions easily
-        }
+        const posts = await response.json();
+        console.log('Posts:', posts);
+        renderPosts(posts);
         
-        // Execute the query
-        const { data, error } = await query;
-        
-        if (error) {
-            throw new Error(`Supabase error: ${error.message}`);
-        }
-        
-        // Apply priority sorting if needed (Urgent category first)
-        if (sort === 'priority') {
-            data.sort((a, b) => {
-                if (a.category === 'Urgent' && b.category !== 'Urgent') return -1;
-                if (a.category !== 'Urgent' && b.category === 'Urgent') return 1;
-                // If both are urgent or both are not, sort by date (newest first)
-                return new Date(b.created_at) - new Date(a.created_at);
-            });
-        }
-        
-        console.log('Posts:', data);
-        
-        // Render the posts
-        renderPosts(data && data.length ? data : []);
+        // Load comments for each post
+        posts.forEach(post => {
+            loadComments(post.id);
+        });
     } catch (error) {
         console.error('Error fetching posts:', error);
-        
-        // For development/debugging - display more information about the error
         document.getElementById('post-loading').style.display = 'none';
         document.getElementById('posts-container').innerHTML = 
-            `<div class="alert alert-danger">
-                <p>Error loading posts. Please try again later.</p>
-                <p><strong>Error details:</strong> ${error.message}</p>
-            </div>`;
-            
-        // Fall back to sample data for development
-        console.log('Loading sample data for development...');
-        loadSamplePosts();
+            '<div class="alert alert-danger">Error loading posts. Please try again later.</div>';
     }
 }
 
-// Function to mark a post as complete
-async function markAsComplete(postId) {
-    try {
-        // Update the post status in Supabase
-        const { data, error } = await supabaseClient
-            .from('posts')
-            .update({ 
-                status: 'completed',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', postId);
-            
-        if (error) {
-            throw new Error(`Supabase error: ${error.message}`);
-        }
-        
-        // Success - refresh the posts
-        alert(`Post ${postId} marked as complete!`);
-        
-        // Get the active category and sort
-        const activeCategory = document.querySelector('#categories-list .sidebar-item.active span:first-child').textContent.trim();
-        const sortDropdown = document.querySelector('#sortDropdown + .dropdown-menu .dropdown-item.active');
-        let sortValue = 'newest';
-        
-        if (sortDropdown) {
-            if (sortDropdown.textContent.includes('Oldest')) {
-                sortValue = 'oldest';
-            } else if (sortDropdown.textContent.includes('Priority')) {
-                sortValue = 'priority';
-            }
-        }
-        
-        // Refresh the posts
-        fetchPosts(activeCategory, sortValue);
-    } catch (error) {
-        console.error('Error marking post as complete:', error);
-        alert(`An error occurred: ${error.message}`);
+// Function to render posts
+function renderPosts(posts) {
+    const postsContainer = document.getElementById('posts-container');
+    document.getElementById('post-loading').style.display = 'none';
+    
+    if (posts.length === 0) {
+        postsContainer.innerHTML = '<div class="alert alert-info">No posts yet. Send an email to create the first post!</div>';
+        return;
     }
-}
-
-// Function to load sample data for development/testing
-function loadSamplePosts() {
-    const samplePosts = [
-        {
-            id: 1,
-            title: "Urgent: Website Down Issue",
-            content: "The client website at client.example.com is currently down. Initial investigation shows it might be a database connection issue. Need someone to look at this immediately.\n\nError log shows: Connection refused (111)",
-            sender: "support@vpterdatahouse.com",
-            recipient: "info@vpterdatahouse.com",
-            category: "Urgent",
-            created_at: "2025-04-19T10:23:00",
-            action_type: "technical_support",
-            status: "new"
-        },
-        {
-            id: 2,
-            title: "Help spread the word: New product launch next week",
-            content: "We're launching our new data visualization tool next week and need help spreading the word on social media.\n\nHere's the announcement text to share:\n\n'Excited to announce our new DataViz Pro tool launching next Tuesday! Real-time dashboards for your most complex datasets. #DataVisualization #Analytics'",
-            sender: "marketing@vpterdatahouse.com",
-            recipient: "info@vpterdatahouse.com",
-            category: "Social Media",
-            created_at: "2025-04-18T15:45:00",
-            action_type: "social_share",
-            status: "new"
-        },
-        {
-            id: 3,
-            title: "Client Email Response Needed: Project Timeline",
-            content: "The client has asked for an updated timeline on the data migration project. Can someone from the project team draft a response outlining our current progress and expected completion dates?\n\nSpecifically they want to know:\n1. When the schema mapping will be completed\n2. Expected start date for the test migration\n3. Final migration timeline",
-            sender: "accounts@vpterdatahouse.com",
-            recipient: "info@vpterdatahouse.com",
-            category: "Email Action",
-            created_at: "2025-04-17T09:30:00",
-            action_type: "email_response",
-            status: "completed"
+    
+    let html = '';
+    posts.forEach(post => {
+        const formattedDate = formatDate(post.created_at);
+        let statusBadge = '';
+        
+        if (post.status === 'new') {
+            statusBadge = '<span class="badge bg-success me-1">New</span>';
+        } else if (post.status === 'completed') {
+            statusBadge = '<span class="badge bg-secondary me-1">Completed</span>';
         }
-    ];
-    
-    renderPosts(samplePosts);
-}
-
-// Rest of the JavaScript remains the same
-// Function to set up sidebar filters
-function setupSidebarFilters() {
-    const categoryItems = document.querySelectorAll('#categories-list .sidebar-item');
-    
-    categoryItems.forEach(item => {
-        item.addEventListener('click', function() {
-            // Remove active class from all items
-            categoryItems.forEach(i => i.classList.remove('active'));
-            
-            // Add active class to clicked item
-            this.classList.add('active');
-            
-            // Get the category name from the item text
-            const categoryText = this.querySelector('span:first-child').textContent.trim();
-            
-            // Fetch posts with the selected category
-            fetchPosts(categoryText);
-        });
+        
+        html += `
+            <div class="card post-card" id="post-${post.id}">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div>
+                        ${statusBadge}
+                        <span class="badge bg-${getCategoryColor(post.category)} category-badge me-2">${post.category}</span>
+                        <strong>${post.title}</strong>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-bookmark-plus"></i> Save</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-forward"></i> Forward</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-archive"></i> Archive</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="user-avatar bg-secondary me-2">
+                                ${getInitials(post.sender)}
+                            </div>
+                            <div>
+                                <div class="fw-bold">${post.sender}</div>
+                                <div class="text-muted small">to ${post.recipient}</div>
+                            </div>
+                            <div class="ms-auto text-muted small">
+                                ${formattedDate}
+                            </div>
+                        </div>
+                        <div class="post-content">${post.content}</div>
+                    </div>
+                    
+                    ${generateActionWidget(post)}
+                    
+                    <!-- Comments section -->
+                    <div class="comments-section mt-3">
+                        <h6>Comments</h6>
+                        <div class="comments-list">
+                            <!-- Comments will be loaded here -->
+                            <div class="text-muted small">Loading comments...</div>
+                        </div>
+                        <div class="input-group mt-2">
+                            <input type="text" class="form-control" placeholder="Add a comment...">
+                            <button class="btn btn-outline-primary" onclick="addComment(${post.id})">
+                                <i class="bi bi-send"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     });
-}
-
-// Function to set up sort dropdown
-function setupSortDropdown() {
-    const sortItems = document.querySelectorAll('#sortDropdown + .dropdown-menu .dropdown-item');
     
-    sortItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Remove active class from all items
-            sortItems.forEach(i => i.classList.remove('active'));
-            
-            // Add active class to clicked item
-            this.classList.add('active');
-            
-            // Update the dropdown button text
-            document.getElementById('sortDropdown').textContent = this.textContent;
-            
-            // Get the active category
-            const activeCategory = document.querySelector('#categories-list .sidebar-item.active span:first-child').textContent.trim();
-            
-            // Get the sort value
-            let sortValue;
-            if (this.textContent.includes('Newest')) {
-                sortValue = 'newest';
-            } else if (this.textContent.includes('Oldest')) {
-                sortValue = 'oldest';
-            } else if (this.textContent.includes('Priority')) {
-                sortValue = 'priority';
-            }
-            
-            // Fetch posts with the selected sort
-            fetchPosts(activeCategory, sortValue);
-        });
-    });
+    postsContainer.innerHTML = html;
+    
+    // Update category counts
+    updateCategoryCounts(posts);
 }
 
 // Function to generate action widgets based on post type
@@ -301,7 +190,7 @@ function generateActionWidget(post) {
                 <h5>Technical Support Actions</h5>
                 <div class="mb-3">
                     <label class="form-label">Status Update</label>
-                    <select class="form-select">
+                    <select class="form-select status-select" data-post-id="${post.id}">
                         <option value="investigating" selected>Investigating</option>
                         <option value="in_progress">In Progress</option>
                         <option value="resolved">Resolved</option>
@@ -315,31 +204,13 @@ function generateActionWidget(post) {
             break;
             
         case 'social_share':
-            const contentLines = post.content.split('\n\n');
-            let shareText = '';
-            
-            // Try to find shareable content - this is a simplified approach
-            for (let i = 0; i < contentLines.length; i++) {
-                if (contentLines[i].includes('share') || contentLines[i].includes('post')) {
-                    // Take the next line as the shareable content
-                    if (i + 1 < contentLines.length) {
-                        shareText = encodeURIComponent(contentLines[i + 1].replace(/'/g, ''));
-                        break;
-                    }
-                }
-            }
-            
-            // If we couldn't find specific content, use the whole thing
-            if (!shareText) {
-                shareText = encodeURIComponent(post.content.replace(/'/g, '').substring(0, 240));
-            }
-            
+            const shareText = encodeURIComponent(post.content);
             widgetHTML += `
                 <h5>Social Media Actions</h5>
                 <div class="mb-3">
                     <p>Share this announcement on your social platforms:</p>
                     <div class="p-2 border rounded bg-light">
-                        ${shareText ? decodeURIComponent(shareText) : post.content}
+                        ${post.content}
                     </div>
                 </div>
                 <div class="d-flex gap-2">
@@ -406,76 +277,6 @@ function formatDate(dateString) {
     }
 }
 
-// Function to render posts
-function renderPosts(posts) {
-    const postsContainer = document.getElementById('posts-container');
-    document.getElementById('post-loading').style.display = 'none';
-    
-    if (posts.length === 0) {
-        postsContainer.innerHTML = '<div class="alert alert-info">No posts found. Try a different filter or send an email to create a new post!</div>';
-        return;
-    }
-    
-    let html = '';
-    posts.forEach(post => {
-        const formattedDate = formatDate(post.created_at);
-        let statusBadge = '';
-        
-        if (post.status === 'new') {
-            statusBadge = '<span class="badge bg-success me-1">New</span>';
-        } else if (post.status === 'completed') {
-            statusBadge = '<span class="badge bg-secondary me-1">Completed</span>';
-        }
-        
-        html += `
-            <div class="card post-card">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <div>
-                        ${statusBadge}
-                        <span class="badge bg-${getCategoryColor(post.category)} category-badge me-2">${post.category}</span>
-                        <strong>${post.title}</strong>
-                    </div>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-three-dots-vertical"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-bookmark-plus"></i> Save</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-forward"></i> Forward</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-archive"></i> Archive</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="user-avatar bg-secondary me-2">
-                                ${getInitials(post.sender)}
-                            </div>
-                            <div>
-                                <div class="fw-bold">${post.sender}</div>
-                                <div class="text-muted small">to ${post.recipient}</div>
-                            </div>
-                            <div class="ms-auto text-muted small">
-                                ${formattedDate}
-                            </div>
-                        </div>
-                        <div class="post-content">${post.content.replace(/\n/g, '<br>')}</div>
-                    </div>
-                    
-                    ${generateActionWidget(post)}
-                </div>
-            </div>
-        `;
-    });
-    
-    postsContainer.innerHTML = html;
-    
-    // Update category counts
-    updateCategoryCounts(posts);
-}
-
 // Function to get initials from email address
 function getInitials(email) {
     const name = email.split('@')[0];
@@ -498,29 +299,36 @@ function getCategoryColor(category) {
 
 // Function to update category counts
 function updateCategoryCounts(posts) {
-    // Count all posts
-    const allCount = posts.length;
-    document.getElementById('all-count').textContent = allCount;
-    
     // Count posts by category
-    const categoryCounts = {};
+    const categoryCounts = { 'All': posts.length };
     posts.forEach(post => {
         if (post.category) {
             categoryCounts[post.category] = (categoryCounts[post.category] || 0) + 1;
         }
     });
     
-    // Update category counts in the sidebar
+    // Update the "All" count
+    const allCountElement = document.getElementById('all-count');
+    if (allCountElement) {
+        allCountElement.textContent = categoryCounts['All'] || 0;
+    }
+    
+    // Update other category counts
     const categoryElements = document.querySelectorAll('#categories-list .sidebar-item');
     categoryElements.forEach(element => {
-        const category = element.querySelector('span:first-child').textContent.trim();
+        const categoryText = element.querySelector('span:first-child').textContent.trim();
+        let category = '';
         
-        if (category.includes('Urgent')) {
-            element.querySelector('.badge').textContent = categoryCounts['Urgent'] || 0;
-        } else if (category.includes('Email Action')) {
-            element.querySelector('.badge').textContent = categoryCounts['Email Action'] || 0;
-        } else if (category.includes('Social Media')) {
-            element.querySelector('.badge').textContent = categoryCounts['Social Media'] || 0;
+        if (categoryText.includes('Urgent')) {
+            category = 'Urgent';
+        } else if (categoryText.includes('Email Action')) {
+            category = 'Email Action';
+        } else if (categoryText.includes('Social Media')) {
+            category = 'Social Media';
+        }
+        
+        if (category && element.querySelector('.badge')) {
+            element.querySelector('.badge').textContent = categoryCounts[category] || 0;
         }
     });
 }
@@ -528,9 +336,7 @@ function updateCategoryCounts(posts) {
 // Function to mark a post as complete
 async function markAsComplete(postId) {
     try {
-        const apiBase = '/server/api'; // Match the same base as fetchPosts
-        
-        const response = await fetch(`${apiBase}/mark-complete`, {
+        const response = await fetch('/api/mark-complete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -538,502 +344,210 @@ async function markAsComplete(postId) {
             body: JSON.stringify({ post_id: postId })
         });
         
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
-        if (response.ok) {
-            // Success - refresh the posts
-            alert(`Post ${postId} marked as complete!`);
-            
-            // Get the active category and sort
-            const activeCategory = document.querySelector('#categories-list .sidebar-item.active span:first-child').textContent.trim();
-            const sortDropdown = document.querySelector('#sortDropdown + .dropdown-menu .dropdown-item.active');
-            let sortValue = 'newest';
-            
-            if (sortDropdown) {
-                if (sortDropdown.textContent.includes('Oldest')) {
-                    sortValue = 'oldest';
-                } else if (sortDropdown.textContent.includes('Priority')) {
-                    sortValue = 'priority';
+        const result = await response.json();
+        console.log('Mark complete result:', result);
+        
+        if (result.success) {
+            // Update the UI to show the post as completed
+            const postElement = document.getElementById(`post-${postId}`);
+            if (postElement) {
+                const statusBadge = postElement.querySelector('.badge');
+                if (statusBadge) {
+                    statusBadge.className = 'badge bg-secondary me-1';
+                    statusBadge.textContent = 'Completed';
                 }
             }
             
-            // Refresh the posts
-            fetchPosts(activeCategory, sortValue);
-        } else {
-            // Error
-            alert(`Error: ${data.error || 'Failed to mark post as complete'}`);
+            // Show a success message
+            showToast('Success', `Post ${postId} marked as complete!`);
         }
     } catch (error) {
         console.error('Error marking post as complete:', error);
-        alert('An error occurred. Please try again later.');
+        showToast('Error', 'Failed to mark post as complete. Please try again.');
     }
 }
 
-// Function to assign to team (stub for now)
+// Function to assign a post to a team member
 function assignToTeam(postId) {
-    alert(`Post ${postId} ready to be assigned. Team selection would open here.`);
-    // In a real implementation, this would open a team selection dialog
+    // In a real implementation, this would open a team selection modal
+    showToast('Info', `Post ${postId} ready to be assigned. Team selection would open here.`);
 }
 
-// Function to send email response (stub for now)
+// Function to send an email response
 function sendEmailResponse(postId) {
-    const postCard = document.querySelector(`.post-card:has(button[onclick="sendEmailResponse(${postId})"])`);
-    if (!postCard) {
-        const textarea = document.querySelector(`textarea`);
-        if (textarea) {
-            const response = textarea.value.trim();
-            if (response) {
-                alert(`Email response submitted: ${response}`);
-                markAsComplete(postId);
-            } else {
-                alert('Please write a response first');
-            }
-        } else {
-            alert('Could not find the response text area.');
-        }
+    const textarea = document.querySelector(`#post-${postId} textarea`);
+    if (!textarea) return;
+    
+    const response = textarea.value.trim();
+    if (response) {
+        // In a real implementation, this would send the email and update the database
+        showToast('Success', 'Email response sent successfully!');
+        markAsComplete(postId);
     } else {
-        const textarea = postCard.querySelector('textarea');
-        const response = textarea.value.trim();
-        
-        if (response) {
-            alert(`Email response submitted: ${response}`);
-            markAsComplete(postId);
-        } else {
-            alert('Please write a response first');
-        }
+        showToast('Warning', 'Please write a response first');
     }
 }
 
-// Add this code to your main.js file or to a separate script file that's included in your HTML
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Setting up New Action button handler');
-    
-    // Get the New Action button
-    const newActionButton = document.querySelector('button[data-bs-toggle="modal"][data-bs-target="#newPostModal"]');
-    
-    // If the button uses a different selector, try one of these:
-    // const newActionButton = document.getElementById('newActionButton');
-    // const newActionButton = document.querySelector('.btn-primary:contains("New Action")');
-    // const newActionButton = document.querySelector('[data-bs-target="#newPostModal"]');
-    
-    if (newActionButton) {
-        console.log('New Action button found');
-        
-        // Ensure the button is properly set up for Bootstrap modal
-        if (!newActionButton.hasAttribute('data-bs-toggle') || !newActionButton.hasAttribute('data-bs-target')) {
-            newActionButton.setAttribute('data-bs-toggle', 'modal');
-            newActionButton.setAttribute('data-bs-target', '#newPostModal');
-        }
-        
-        // Add a click event listener as a backup
-        newActionButton.addEventListener('click', function(event) {
-            console.log('New Action button clicked');
-            
-            // Try to open the modal using Bootstrap's API
-            try {
-                const myModal = new bootstrap.Modal(document.getElementById('newPostModal'));
-                myModal.show();
-            } catch (error) {
-                console.error('Error opening modal:', error);
-                
-                // Fallback: try direct manipulation if Bootstrap API fails
-                const modal = document.getElementById('newPostModal');
-                if (modal) {
-                    modal.classList.add('show');
-                    modal.style.display = 'block';
-                    document.body.classList.add('modal-open');
-                    
-                    // Add backdrop
-                    const backdrop = document.createElement('div');
-                    backdrop.className = 'modal-backdrop fade show';
-                    document.body.appendChild(backdrop);
-                }
-            }
-        });
-    } else {
-        console.warn('New Action button not found');
+// Function to show a toast notification
+function showToast(title, message) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
     }
     
-    // Also ensure the form submission in the modal works
-    const newPostForm = document.getElementById('newPostForm');
-    if (newPostForm) {
-        console.log('New Post form found');
-        
-        newPostForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            console.log('Form submitted');
-            
-            // Get form data
-            const formData = new FormData(newPostForm);
-            const postData = {
-                title: formData.get('title'),
-                content: formData.get('content'),
-                category: formData.get('category'),
-                action_type: determineActionType(formData.get('title'), formData.get('content')),
-                sender: 'user@voterdatahouse.com',
-                recipient: 'team@voterdatahouse.com',
-                status: 'new',
-                created_at: new Date().toISOString()
-            };
-            
-            console.log('New post data:', postData);
-            
-            // Add the new post to the UI
-            addNewPost(postData);
-            
-            // Close the modal
-            const myModal = bootstrap.Modal.getInstance(document.getElementById('newPostModal'));
-            if (myModal) {
-                myModal.hide();
-            } else {
-                // Fallback if Bootstrap API isn't available
-                document.getElementById('newPostModal').classList.remove('show');
-                document.getElementById('newPostModal').style.display = 'none';
-                document.body.classList.remove('modal-open');
-                
-                // Remove backdrop
-                const backdrop = document.querySelector('.modal-backdrop');
-                if (backdrop) {
-                    backdrop.remove();
-                }
-            }
-            
-            // Reset the form
-            newPostForm.reset();
-        });
-    } else {
-        console.warn('New Post form not found');
-    }
-});
-
-// Function to add a new post to the UI
-function addNewPost(postData) {
-    // Generate a unique ID for the new post
-    postData.id = Date.now();
+    // Create toast element
+    const toastId = 'toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'toast';
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
     
-    // Create the HTML for the new post
-    const formattedDate = formatDate(postData.created_at);
-    let statusBadge = '<span class="badge bg-success me-1">New</span>';
-    
-    const postHtml = `
-        <div class="card post-card">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <div>
-                    ${statusBadge}
-                    <span class="badge bg-${getCategoryColor(postData.category)} category-badge me-2">${postData.category}</span>
-                    <strong>${postData.title}</strong>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-three-dots-vertical"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-bookmark-plus"></i> Save</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-forward"></i> Forward</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-archive"></i> Archive</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="user-avatar bg-secondary me-2">
-                            ${getInitials(postData.sender)}
-                        </div>
-                        <div>
-                            <div class="fw-bold">${postData.sender}</div>
-                            <div class="text-muted small">to ${postData.recipient}</div>
-                        </div>
-                        <div class="ms-auto text-muted small">
-                            ${formattedDate}
-                        </div>
-                    </div>
-                    <div class="post-content">${postData.content.replace(/\n/g, '<br>')}</div>
-                </div>
-                
-                ${generateActionWidget(postData)}
-            </div>
+    toast.innerHTML = `
+        <div class="toast-header">
+            <strong class="me-auto">${title}</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
         </div>
     `;
     
-    // Add the new post to the beginning of the posts container
-    const postsContainer = document.getElementById('posts-container');
-    postsContainer.insertAdjacentHTML('afterbegin', postHtml);
+    toastContainer.appendChild(toast);
     
-    // Update the category counts
-    const allPosts = document.querySelectorAll('.post-card');
-    updateCategoryCounts(Array.from(allPosts).map(post => {
-        // Extract category from the post
-        const categoryBadge = post.querySelector('.category-badge');
-        return {
-            category: categoryBadge ? categoryBadge.textContent : 'General'
-        };
-    }));
+    // Initialize and show the toast
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remove toast after it's hidden
+    toast.addEventListener('hidden.bs.toast', function() {
+        toast.remove();
+    });
 }
 
-// Helper function to determine action type based on content
-function determineActionType(title, content) {
-    const combinedText = (title + ' ' + content).toLowerCase();
+// Comments functionality
+async function loadComments(postId) {
+    try {
+        const response = await fetch(`/api/comments/${postId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const comments = await response.json();
+        renderComments(postId, comments);
+    } catch (error) {
+        console.error(`Error loading comments for post ${postId}:`, error);
+        const commentsContainer = document.querySelector(`#post-${postId} .comments-list`);
+        if (commentsContainer) {
+            commentsContainer.innerHTML = '<div class="text-muted small">Unable to load comments</div>';
+        }
+    }
+}
+
+function renderComments(postId, comments) {
+    const commentsContainer = document.querySelector(`#post-${postId} .comments-list`);
+    if (!commentsContainer) return;
     
-    if (combinedText.includes('urgent') || combinedText.includes('emergency') || combinedText.includes('asap')) {
-        return 'technical_support';
-    } else if (combinedText.includes('share') || combinedText.includes('post') || combinedText.includes('social media')) {
-        return 'social_share';
-    } else if (combinedText.includes('respond') || combinedText.includes('reply') || combinedText.includes('email')) {
-        return 'email_response';
+    if (comments.length === 0) {
+        commentsContainer.innerHTML = '<div class="text-muted small">No comments yet</div>';
+        return;
     }
     
-    return 'general';
+    let html = '';
+    comments.forEach(comment => {
+        html += `
+            <div class="comment d-flex mb-2">
+                <div class="user-avatar bg-light text-dark me-2" style="width: 28px; height: 28px; font-size: 12px;">
+                    ${getInitials(comment.user_id)}
+                </div>
+                <div>
+                    <div class="fw-bold small">${comment.user_id}</div>
+                    <div class="small">${comment.content}</div>
+                    <div class="text-muted x-small">${formatDate(comment.created_at)}</div>
+                </div>
+            </div>
+        `;
+    });
+    
+    commentsContainer.innerHTML = html;
 }
-// Add this code at the end of your main.js file
 
-// Modified submit button event handler for main.js
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Get the submit button for the new post form
-  const submitButton = document.getElementById('submitNewPost');
-  
-  if (submitButton) {
-    console.log('Submit button found: #submitNewPost');
+async function addComment(postId) {
+    const inputElement = document.querySelector(`#post-${postId} .input-group input`);
+    if (!inputElement) return;
     
-    submitButton.addEventListener('click', function() {
-      console.log('Submit button clicked');
-      
-      // Get form values
-      const title = document.getElementById('postTitle').value;
-      const category = document.getElementById('postCategory').value;
-      const actionType = document.getElementById('postActionType').value;
-      const content = document.getElementById('postContent').value;
-      const sender = document.getElementById('postSender').value;
-      const recipient = document.getElementById('postRecipient').value;
-      
-      // Validate form
-      if (!title || !category || !actionType || !content) {
-        alert('Please fill in all required fields');
+    const content = inputElement.value.trim();
+    if (!content) {
+        showToast('Warning', 'Please enter a comment');
         return;
-      }
-      
-      // Create post data object - without an ID field for Supabase
-      // Let Supabase auto-generate the ID
-      const postData = {
-        title: title,
-        content: content,
-        category: category,
-        action_type: actionType,
-        sender: sender,
-        recipient: recipient,
-        status: 'new',
-        created_at: new Date().toISOString()
-      };
-      
-      console.log('Creating new post:', postData);
-      
-      // Try to save to Supabase if available
-      if (typeof supabaseClient !== 'undefined') {
-        try {
-          supabaseClient
-            .from('posts')
-            .insert(postData)
-            .then(response => {
-              if (response.error) {
-                console.error('Error inserting post to Supabase:', response.error);
-                // Fall back to adding to UI only with a local ID
-                const localPostData = { ...postData, id: Math.floor(Math.random() * 1000) };
-                addNewPost(localPostData);
-              } else {
-                console.log('Post added to Supabase successfully:', response.data);
-                // Refresh posts to show the new one
-                fetchPosts();
-              }
-            });
-        } catch (error) {
-          console.error('Error with Supabase:', error);
-          // Fall back to adding to UI only with a local ID
-          const localPostData = { ...postData, id: Math.floor(Math.random() * 1000) };
-          addNewPost(localPostData);
-        }
-      } else {
-        // If Supabase isn't available, just add to UI with a local ID
-        const localPostData = { ...postData, id: Math.floor(Math.random() * 1000) };
-        addNewPost(localPostData);
-      }
-      
-      // Close the modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('newPostModal'));
-      if (modal) {
-        modal.hide();
-      }
-      
-      // Reset form fields
-      document.getElementById('postTitle').value = '';
-      document.getElementById('postContent').value = '';
-      document.getElementById('postCategory').selectedIndex = 0;
-      document.getElementById('postActionType').selectedIndex = 0;
-    });
-  } else {
-    console.warn('Submit button not found: #submitNewPost');
-  }
-});
-// Direct fix for the aria-hidden warning
-document.addEventListener('DOMContentLoaded', function() {
-  // Get all cancel buttons in modals
-  const cancelButtons = document.querySelectorAll('.modal .btn-secondary[data-bs-dismiss="modal"]');
-  
-  cancelButtons.forEach(button => {
-    // Add click event that explicitly removes focus before the modal closes
-    button.addEventListener('mousedown', function() {
-      // Use mousedown instead of click to catch the event before the modal starts closing
-      this.blur();
-      
-      // Force focus somewhere else, like the body
-      document.body.focus();
-      
-      // For modals with forms, try to reset the form
-      const form = this.closest('.modal').querySelector('form');
-      if (form) form.reset();
-    });
-  });
-  
-  // Also handle the X button (close button) in modal headers
-  const closeButtons = document.querySelectorAll('.modal .btn-close');
-  closeButtons.forEach(button => {
-    button.addEventListener('mousedown', function() {
-      this.blur();
-      document.body.focus();
-    });
-  });
-  
-  // Add inert attribute dynamically when modal is hidden
-  const modals = document.querySelectorAll('.modal');
-  modals.forEach(modal => {
-    modal.addEventListener('hide.bs.modal', function() {
-      // Add inert attribute as the modal starts to hide
-      this.setAttribute('inert', '');
-      
-      // Remove inert after the modal is fully hidden
-      this.addEventListener('hidden.bs.modal', function() {
-        this.removeAttribute('inert');
-      }, { once: true }); // only trigger once
-    });
-  });
-});
-// Place this at the end of your main.js file
-document.addEventListener('DOMContentLoaded', function() {
-  // Override Bootstrap's modal hide method to properly handle focus
-  if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-    // Store original hide method
-    const originalHide = bootstrap.Modal.prototype.hide;
+    }
     
-    // Override the hide method
-    bootstrap.Modal.prototype.hide = function() {
-      // Get all focusable elements in the modal
-      const focusableElements = this._element.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      
-      // Remove focus from all elements
-      focusableElements.forEach(el => el.blur());
-      
-      // Add inert attribute to the modal
-      this._element.setAttribute('inert', '');
-      
-      // Call the original hide method
-      const result = originalHide.apply(this, arguments);
-      
-      // Remove inert attribute after transition
-      setTimeout(() => {
-        this._element.removeAttribute('inert');
-      }, 500); // Wait for transition to complete
-      
-      return result;
-    };
-  }
-  
-  // Additional direct fix for cancel/close buttons
-  document.querySelectorAll('.modal .btn-close, .modal .btn-secondary').forEach(button => {
-    button.addEventListener('mousedown', function() {
-      // Immediately remove focus and prevent it from being set again
-      this.blur();
-      this.setAttribute('tabindex', '-1');
-      
-      // Reset after modal is fully closed
-      setTimeout(() => {
-        this.removeAttribute('tabindex');
-      }, 500);
-    });
-  });
-});
-// Add this to the end of your main.js file
-document.addEventListener('DOMContentLoaded', function() {
-  // Direct fix for Bootstrap modal focus issue
-  const fixModalFocus = function() {
-    // Find all modals
-    const modals = document.querySelectorAll('.modal');
-    
-    modals.forEach(modal => {
-      // Handle modal hidden event
-      modal.addEventListener('hidden.bs.modal', function() {
-        // Ensure no elements inside the modal have focus
-        const focusedElement = modal.querySelector(':focus');
-        if (focusedElement) {
-          focusedElement.blur();
-        }
-        
-        // Make sure the modal itself doesn't have focus
-        modal.blur();
-        
-        // Set focus to the main container or body
-        document.querySelector('.container-fluid').focus();
-      });
-      
-      // Handle all buttons in the modal to prevent focus retention
-      const buttons = modal.querySelectorAll('button');
-      buttons.forEach(button => {
-        button.addEventListener('click', function() {
-          // Use setTimeout to delay the blur until after the modal's hide process has started
-          setTimeout(() => {
-            // Remove focus from the button
-            this.blur();
-            // Make the button temporarily unfocusable
-            this.setAttribute('tabindex', '-1');
-            
-            // Restore focusability after modal transition
-            setTimeout(() => {
-              this.removeAttribute('tabindex');
-            }, 500);
-          }, 0);
+    try {
+        const response = await fetch('/api/comments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                post_id: postId,
+                content: content,
+                user_id: 'current.user@example.com' // In a real app, this would be the logged-in user
+            })
         });
-      });
-    });
-  };
-  
-  // Run the fix now
-  fixModalFocus();
-  
-  // Also run the fix whenever the DOM changes (in case modals are added dynamically)
-  if (window.MutationObserver) {
-    const observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        if (mutation.addedNodes.length > 0) {
-          // Check if any of the added nodes are modals or contain modals
-          for (let i = 0; i < mutation.addedNodes.length; i++) {
-            const node = mutation.addedNodes[i];
-            if (node.nodeType === 1) { // Element node
-              if (node.classList && node.classList.contains('modal')) {
-                fixModalFocus();
-                break;
-              } else if (node.querySelector && node.querySelector('.modal')) {
-                fixModalFocus();
-                break;
-              }
-            }
-          }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-      });
-    });
-    
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
+        
+        const result = await response.json();
+        if (result.success) {
+            // Clear the input field
+            inputElement.value = '';
+            
+            // Reload comments
+            loadComments(postId);
+        }
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        showToast('Error', 'Failed to add comment. Please try again.');
+    }
+}
+
+// Add event listeners for status select changes
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.classList.contains('status-select')) {
+        const postId = e.target.getAttribute('data-post-id');
+        const status = e.target.value;
+        
+        if (postId && status) {
+            updatePostStatus(postId, status);
+        }
+    }
 });
+
+// Function to update post status
+async function updatePostStatus(postId, status) {
+    try {
+        // In a real implementation, this would call an API endpoint
+        console.log(`Updating post ${postId} status to ${status}`);
+        showToast('Success', `Status updated to: ${status}`);
+        
+        // If status is "resolved", mark the post as complete
+        if (status === 'resolved') {
+            markAsComplete(postId);
+        }
+    } catch (error) {
+        console.error('Error updating status:', error);
+        showToast('Error', 'Failed to update status. Please try again.');
+    }
+}
