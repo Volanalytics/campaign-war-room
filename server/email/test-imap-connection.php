@@ -11,10 +11,10 @@
 
 // Email configuration - UPDATE THESE VALUES
 $email_config = [
-    'host'     => 'imap.example.com', // IMAP server host
+    'host'     => 'imap.titan.email', // IMAP server host
     'port'     => 993,                // IMAP port (usually 993 for SSL)
-    'username' => 'info@example.com', // Email address
-    'password' => 'your-password',    // Email password
+    'username' => 'campaign101@voterdatahouse.com', // Email address
+    'password' => '2026Braden09#',    // Email password
     'mailbox'  => 'INBOX',            // Mailbox to check
     'ssl'      => true                // Use SSL/TLS
 ];
