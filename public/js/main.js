@@ -219,27 +219,31 @@ function generateActionWidget(post) {
             `;
             break;
             
-        case 'social_share':
-            const shareText = encodeURIComponent(post.content.split('\n\n')[2].replace(/'/g, ''));
-            widgetHTML += `
-                <h5>Social Media Actions</h5>
-                <div class="mb-3">
-                    <p>Share this announcement on your social platforms:</p>
-                    <div class="p-2 border rounded bg-light">
-                        ${post.content.split('\n\n')[2].replace(/'/g, '')}
-                    </div>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="https://twitter.com/intent/tweet?text=${shareText}" target="_blank" class="btn btn-primary">
-                        <i class="bi bi-twitter"></i> Share on Twitter
-                    </a>
-                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://campaign.voterdatahouse.com&summary=${shareText}" target="_blank" class="btn btn-outline-primary">
-                        <i class="bi bi-linkedin"></i> Share on LinkedIn
-                    </a>
-                    <button class="btn btn-outline-secondary" onclick="markAsComplete(${post.id})">Mark as Shared</button>
-                </div>
-            `;
-            break;
+      case 'social_share':
+    // Safely extract share text, defaulting to full content if third paragraph doesn't exist
+    const contentParts = post.content.split('\n\n');
+    const textToShare = contentParts.length >= 3 ? contentParts[2] : post.content;
+    const shareText = encodeURIComponent(textToShare.replace(/'/g, ''));
+    
+    widgetHTML += `
+        <h5>Social Media Actions</h5>
+        <div class="mb-3">
+            <p>Share this announcement on your social platforms:</p>
+            <div class="p-2 border rounded bg-light">
+                ${textToShare.replace(/'/g, '')}
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="https://twitter.com/intent/tweet?text=${shareText}" target="_blank" class="btn btn-primary">
+                <i class="bi bi-twitter"></i> Share on Twitter
+            </a>
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://campaign.voterdatahouse.com&summary=${shareText}" target="_blank" class="btn btn-outline-primary">
+                <i class="bi bi-linkedin"></i> Share on LinkedIn
+            </a>
+            <button class="btn btn-outline-secondary" onclick="markAsComplete(${post.id})">Mark as Shared</button>
+        </div>
+    `;
+    break;
             
         case 'email_response':
             widgetHTML += `
