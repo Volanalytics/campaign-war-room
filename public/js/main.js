@@ -965,3 +965,75 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+// Add this to the end of your main.js file
+document.addEventListener('DOMContentLoaded', function() {
+  // Direct fix for Bootstrap modal focus issue
+  const fixModalFocus = function() {
+    // Find all modals
+    const modals = document.querySelectorAll('.modal');
+    
+    modals.forEach(modal => {
+      // Handle modal hidden event
+      modal.addEventListener('hidden.bs.modal', function() {
+        // Ensure no elements inside the modal have focus
+        const focusedElement = modal.querySelector(':focus');
+        if (focusedElement) {
+          focusedElement.blur();
+        }
+        
+        // Make sure the modal itself doesn't have focus
+        modal.blur();
+        
+        // Set focus to the main container or body
+        document.querySelector('.container-fluid').focus();
+      });
+      
+      // Handle all buttons in the modal to prevent focus retention
+      const buttons = modal.querySelectorAll('button');
+      buttons.forEach(button => {
+        button.addEventListener('click', function() {
+          // Use setTimeout to delay the blur until after the modal's hide process has started
+          setTimeout(() => {
+            // Remove focus from the button
+            this.blur();
+            // Make the button temporarily unfocusable
+            this.setAttribute('tabindex', '-1');
+            
+            // Restore focusability after modal transition
+            setTimeout(() => {
+              this.removeAttribute('tabindex');
+            }, 500);
+          }, 0);
+        });
+      });
+    });
+  };
+  
+  // Run the fix now
+  fixModalFocus();
+  
+  // Also run the fix whenever the DOM changes (in case modals are added dynamically)
+  if (window.MutationObserver) {
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.addedNodes.length > 0) {
+          // Check if any of the added nodes are modals or contain modals
+          for (let i = 0; i < mutation.addedNodes.length; i++) {
+            const node = mutation.addedNodes[i];
+            if (node.nodeType === 1) { // Element node
+              if (node.classList && node.classList.contains('modal')) {
+                fixModalFocus();
+                break;
+              } else if (node.querySelector && node.querySelector('.modal')) {
+                fixModalFocus();
+                break;
+              }
+            }
+          }
+        }
+      });
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+});
