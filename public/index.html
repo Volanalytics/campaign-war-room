@@ -156,57 +156,58 @@
             </div>
             
             <!-- Main content -->
-        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Campaign Action Feed</h1>
-    <div class="d-flex align-items-center">
-        <!-- Auth Status / User Menu -->
-        <div class="me-3">
-            <!-- Shown when logged out -->
-            <div id="loggedOutMenu">
-                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#loginModal">
-                    <i class="bi bi-person"></i> Log In
-                </button>
-            </div>
-            
-            <!-- Shown when logged in -->
-            <div id="loggedInMenu" class="dropdown d-none">
-                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-                    <span class="user-avatar bg-primary me-1" style="width: 24px; height: 24px; font-size: 0.7em;"></span>
-                    <span id="userDisplayName">User</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
-                    <li><span class="dropdown-item-text" id="userRole">Role: Member</span></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <!-- Admin-only menu items -->
-                    <li class="admin-only d-none"><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#userManagementModal">
-                        <i class="bi bi-people"></i> Manage Users
-                    </a></li>
-                    <li class="admin-only d-none"><hr class="dropdown-divider"></li>
-                    <!-- End admin-only items -->
-                    <li><a class="dropdown-item" href="#" id="logoutButton">
-                        <i class="bi bi-box-arrow-right"></i> Log Out
-                    </a></li>
-                </ul>
-            </div>
-        </div>
-        
-        <div class="btn-toolbar mb-2 mb-md-0">
-            <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#newPostModal">
-                <i class="bi bi-plus-lg"></i> New Action
-            </button>
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-sort-down"></i> Sort by
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="sortDropdown">
-                    <li><a class="dropdown-item active" href="#">Newest first</a></li>
-                    <li><a class="dropdown-item" href="#">Oldest first</a></li>
-                    <li><a class="dropdown-item" href="#">Priority</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
+            <div class="col-md-9 col-lg-10 ms-sm-auto px-md-4 py-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Campaign Action Feed</h1>
+                    <div class="d-flex align-items-center">
+                        <!-- Auth Status / User Menu -->
+                        <div class="me-3">
+                            <!-- Shown when logged out -->
+                            <div id="loggedOutMenu">
+                                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#loginModal">
+                                    <i class="bi bi-person"></i> Log In
+                                </button>
+                            </div>
+                            
+                            <!-- Shown when logged in -->
+                            <div id="loggedInMenu" class="dropdown d-none">
+                                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="user-avatar bg-primary me-1" style="width: 24px; height: 24px; font-size: 0.7em;"></span>
+                                    <span id="userDisplayName">User</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
+                                    <li><span class="dropdown-item-text" id="userRole">Role: Member</span></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <!-- Admin-only menu items -->
+                                    <li class="admin-only d-none"><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#userManagementModal">
+                                        <i class="bi bi-people"></i> Manage Users
+                                    </a></li>
+                                    <li class="admin-only d-none"><hr class="dropdown-divider"></li>
+                                    <!-- End admin-only items -->
+                                    <li><a class="dropdown-item" href="#" id="logoutButton">
+                                        <i class="bi bi-box-arrow-right"></i> Log Out
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#newPostModal">
+                                <i class="bi bi-plus-lg"></i> New Action
+                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-sort-down"></i> Sort by
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                                    <li><a class="dropdown-item active" href="#">Newest first</a></li>
+                                    <li><a class="dropdown-item" href="#">Oldest first</a></li>
+                                    <li><a class="dropdown-item" href="#">Priority</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div id="post-loading" class="text-center p-5">
                     <div class="spinner-border text-primary" role="status">
@@ -414,6 +415,7 @@
             </div>
         </div>
     </div>
+    
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
