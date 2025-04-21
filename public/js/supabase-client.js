@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Initialize the Supabase client
 const supabase = window.supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
-/ Try different ways the Supabase client might be exposed
+// Try different ways the Supabase client might be exposed
 let supabase;
 if (typeof supabaseJs !== 'undefined') {
     supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
