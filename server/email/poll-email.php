@@ -1,14 +1,5 @@
 <?php
-/**
- * Email Polling Script for Action Hub using Supabase API
- * 
- * This script connects to an email inbox via IMAP,
- * checks for new messages, and processes them into Supabase
- * using direct API calls (no database driver required).
- * 
- * Set this up as a cron job to run periodically, e.g.:
- * */5 * * * * php /path/to/server/email/supabase-poll-email.php
- */
+
 
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
@@ -29,7 +20,7 @@ log_message("Email polling started with Supabase API integration");
 
 // Supabase configuration - UPDATE THESE VALUES
 $supabase_url = 'https://xhqzjelmxblchcdcdigv.supabase.co';  // Your Supabase URL
-$supabase_key = 'YOUR_SUPABASE_API_KEY';  // Your Supabase API key
+$supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhocXpqZWxteGJsY2hjZGNkaWd2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDg0MjA3MCwiZXhwIjoyMDYwNDE4MDcwfQ.pCwzDz-U2Xd8thvm-uXhywKuUycu7W45BYnjuZ2Wk_o';  // Your Supabase API key
 
 // Email configuration - UPDATE THESE VALUES
 $email_config = [
