@@ -1,11 +1,5 @@
 <?php
-/**
- * Email Polling Script for Action Hub
- * 
- * This script connects to an email inbox via IMAP,
- * checks for new messages, and processes them into
- * the Action Hub system.
- * /
+
 
 
 // Enable error reporting for debugging
