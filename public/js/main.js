@@ -356,115 +356,91 @@ async function addComment(postId, button) {
     return;
   }
   
+  // Get current user info
+  let userId = 'anonymous';
+  let userName = 'Guest';
+  
+  try {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (user) {
+      userId = user.id;
+      userName = user.user_metadata?.full_name || user.email;
+    }
+  } catch (error) {
+    console.error('Error getting user info:', error);
+  }
+  
   // Create comment object
   const newComment = {
+    id: Date.now(),
     post_id: postId,
-    user_id: 'user@voterdatahouse.com', // This will be replaced with the actual user ID after authentication
+    user_id: userId,
     content: commentText,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    user_name: userName // Add user's name to display correctly
   };
   
   try {
-    console.log('Attempting to save comment to Supabase:', newComment);
-    
     // Save to Supabase
-    if (supabaseClient) {
-      const { data, error } = await supabaseClient
-        .from('comments')
-        .insert([newComment]);
-        
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
+    const { data, error } = await supabaseClient.from('comments').insert([newComment]);
+    
+    if (error) throw error;
+    
+    console.log('Comment saved to database:', data);
+    
+    // Reload comments to show the new one
+    await loadCommentsForPost(postId, button);
+    
+    // Clear the input
+    commentInput.value = '';
+  } catch (error) {
+    console.error('Error saving comment:', error);
+    alert('Error saving comment to database. Using local storage instead.');
+    
+    // Fallback to local storage if database save fails
+    const post = campaignPosts.find(p => p.id === postId);
+    if (post) {
+      if (!post.comments) post.comments = [];
+      post.comments.push(newComment);
       
-      console.log('Comment saved successfully:', data);
-      
-      // Reload the comments for this post
-      loadCommentsForPost(postId, button);
-      
-      // Clear the input
-      commentInput.value = '';
-    } else {
-      // Add to sample data if Supabase not available
-      console.warn('Supabase client not available, using sample data');
-      // Find the post in sample data
-      const post = campaignPosts.find(p => p.id === postId);
-      if (post) {
-        if (!post.comments) post.comments = [];
-        post.comments.push({...newComment, id: Date.now()});
-        
-        // Update the comments section
-        const commentsSection = button.closest('.comments-section');
-        const commentsList = commentsSection.querySelector('.comments-list');
-        commentsList.innerHTML = renderComments(post.comments);
-      }
+      // Update the comments section
+      const commentsSection = button.closest('.comments-section');
+      const commentsList = commentsSection.querySelector('.comments-list');
+      commentsList.innerHTML = renderComments(post.comments);
       
       // Clear the input
       commentInput.value = '';
     }
-  } catch (error) {
-    console.error('Error saving comment:', error);
-    alert('Failed to save comment. Please try again.');
   }
 }
 
 // Function to load comments for a specific post
 async function loadCommentsForPost(postId, element) {
   try {
-    if (supabaseClient) {
-      console.log(`Loading comments for post ${postId}...`);
-      
-      const { data: comments, error } = await supabaseClient
-        .from('comments')
-        .select('*')
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true });
-        
-      if (error) {
-        console.error('Error loading comments:', error);
-        throw error;
-      }
-      
-      console.log(`Comments loaded:`, comments);
-      
-      // Find the comments section and update it
-      const commentsSection = element.closest('.comments-section');
-      const commentsList = commentsSection.querySelector('.comments-list');
-      commentsList.innerHTML = renderComments(comments);
-    }
+    // Try to get comments from database
+    const { data: comments, error } = await supabaseClient
+      .from('comments')
+      .select('*')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    
+    // Find the comments section and update it
+    const commentsSection = element.closest('.comments-section');
+    const commentsList = commentsSection.querySelector('.comments-list');
+    commentsList.innerHTML = renderComments(comments || []);
   } catch (error) {
     console.error('Error loading comments:', error);
-  }
-}
-
-// Function to render comments for a post
-function renderComments(comments) {
-    if (!comments || comments.length === 0) {
-        return '<div class="text-muted small">No comments yet</div>';
+    
+    // Fallback to local storage
+    const post = campaignPosts.find(p => p.id === postId);
+    if (post && post.comments) {
+      const commentsSection = element.closest('.comments-section');
+      const commentsList = commentsSection.querySelector('.comments-list');
+      commentsList.innerHTML = renderComments(post.comments);
     }
-    
-    let html = '';
-    comments.forEach(comment => {
-        const commentDate = formatDate(comment.created_at);
-        
-        html += `
-            <div class="comment mb-3">
-                <div class="d-flex">
-                    <div class="user-avatar bg-secondary me-2" style="width: 32px; height: 32px; font-size: 0.8em;">
-                        ${getInitials(comment.user_id)}
-                    </div>
-                    <div>
-                        <div class="fw-bold">${comment.user_id}</div>
-                        <div>${comment.content}</div>
-                        <div class="text-muted small">${commentDate}</div>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-    
-    return html;
+  }
 }
 
 
@@ -699,6 +675,35 @@ function renderPosts(posts) {
     updateCategoryCounts(posts);
 }
 
+// Function to render comments for a post
+function renderComments(comments) {
+  if (!comments || comments.length === 0) {
+    return '<div class="text-muted small">No comments yet</div>';
+  }
+  
+  let html = '';
+  comments.forEach(comment => {
+    const commentDate = formatDate(comment.created_at);
+    const userName = comment.user_name || comment.user_id || 'Anonymous';
+    
+    html += `
+      <div class="comment mb-3">
+        <div class="d-flex">
+          <div class="user-avatar bg-secondary me-2" style="width: 32px; height: 32px; font-size: 0.8em;">
+            ${getInitials(userName)}
+          </div>
+          <div>
+            <div class="fw-bold">${userName}</div>
+            <div>${comment.content}</div>
+            <div class="text-muted small">${commentDate}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  return html;
+}
 // Function to update category counts
 function updateCategoryCounts(posts) {
     // Count posts by category
