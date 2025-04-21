@@ -38,7 +38,7 @@ jobs:
       
     - name: Upload logs
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       with:
         name: email-polling-logs
         path: server/email/github-poll-email.log
