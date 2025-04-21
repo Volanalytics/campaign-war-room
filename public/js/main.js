@@ -90,23 +90,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Function to load posts from Supabase
 async function loadPosts() {
-    try {
-        // Show loading indicator
-        document.getElementById('post-loading').style.display = 'block';
-        document.getElementById('posts-container').innerHTML = '';
+  try {
+    // Show loading indicator
+    document.getElementById('post-loading').style.display = 'block';
+    document.getElementById('posts-container').innerHTML = '';
+    
+    console.log('Fetching posts from Supabase...');
+    
+    // Fetch posts from Supabase
+    if (supabase) { // Make sure to use the same variable name as in your supabase-client.js
+      const { data: posts, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
         
-        // Fetch posts from Supabase
-        // For now, use sample data
-        const posts = campaignPosts; // This will be replaced with await fetchPosts();
-        
-        // Render the posts
-        renderPosts(posts);
-    } catch (error) {
-        console.error('Error loading posts:', error);
-        document.getElementById('post-loading').style.display = 'none';
-        document.getElementById('posts-container').innerHTML = 
-            '<div class="alert alert-danger">Error loading posts. Please try again later.</div>';
+      if (error) {
+        console.error('Error fetching posts:', error);
+        throw error;
+      }
+      
+      console.log('Posts retrieved from Supabase:', posts);
+      
+      // Render the posts
+      renderPosts(posts);
+    } else {
+      // If Supabase client isn't available, use sample data
+      console.warn('Supabase client not available, using sample data');
+      renderPosts(campaignPosts);
     }
+  } catch (error) {
+    console.error('Error loading posts:', error);
+    document.getElementById('post-loading').style.display = 'none';
+    document.getElementById('posts-container').innerHTML = 
+      '<div class="alert alert-danger">Error loading posts. Please try again later.</div>';
+  }
 }
 
 // Set up event listeners for the UI
