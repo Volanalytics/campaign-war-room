@@ -368,12 +368,8 @@ async function addComment(postId, button) {
     console.error('Error getting user info:', error);
   }
   
-  // Generate a smaller ID that will fit in an integer column
-  const newId = Math.floor(Math.random() * 1000000);
-  
-  // Create comment object with ID
+  // Create comment object WITHOUT the id - let Supabase generate it
   const newComment = {
-    id: newId,
     post_id: postId,
     user_id: userId,
     content: commentText,
@@ -418,7 +414,7 @@ async function addComment(postId, button) {
     const post = campaignPosts.find(p => p.id === postId);
     if (post) {
       if (!post.comments) post.comments = [];
-      post.comments.push(newComment);
+      post.comments.push({...newComment, id: `local-${Date.now()}`});
       
       // Update the comments section
       const commentsSection = button.closest('.comments-section');
