@@ -1037,3 +1037,256 @@ document.addEventListener('DOMContentLoaded', function() {
     observer.observe(document.body, { childList: true, subtree: true });
   }
 });
+// Add these functions to your existing main.js file
+// Don't replace your whole file - just add these functions
+
+// Comments functionality
+async function loadComments(postId) {
+    try {
+        // For now, use sample comments since the API is not working
+        const sampleComments = [
+            {
+                id: 1,
+                post_id: postId,
+                user_id: "team@voterdatahouse.com",
+                content: "I'll take a look at this right away.",
+                created_at: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+            },
+            {
+                id: 2,
+                post_id: postId,
+                user_id: "admin@voterdatahouse.com",
+                content: "Thanks, please update when resolved.",
+                created_at: new Date(Date.now() - 1800000).toISOString() // 30 minutes ago
+            }
+        ];
+        
+        renderComments(postId, sampleComments);
+    } catch (error) {
+        console.error(`Error loading comments for post ${postId}:`, error);
+    }
+}
+
+function renderComments(postId, comments) {
+    const commentsContainer = document.querySelector(`#post-${postId} .comments-list`);
+    if (!commentsContainer) return;
+    
+    if (comments.length === 0) {
+        commentsContainer.innerHTML = '<div class="text-muted small">No comments yet</div>';
+        return;
+    }
+    
+    let html = '';
+    comments.forEach(comment => {
+        html += `
+            <div class="comment d-flex mb-2">
+                <div class="user-avatar bg-light text-dark me-2" style="width: 28px; height: 28px; font-size: 12px;">
+                    ${getInitials(comment.user_id)}
+                </div>
+                <div>
+                    <div class="fw-bold small">${comment.user_id}</div>
+                    <div class="small">${comment.content}</div>
+                    <div class="text-muted x-small">${formatDate(comment.created_at)}</div>
+                </div>
+            </div>
+        `;
+    });
+    
+    commentsContainer.innerHTML = html;
+}
+
+// Updated addComment function
+function addComment(postId) {
+    const inputElement = document.querySelector(`#post-${postId} .input-group input`);
+    if (!inputElement) return;
+    
+    const content = inputElement.value.trim();
+    if (!content) {
+        showToast('Warning', 'Please enter a comment');
+        return;
+    }
+    
+    // Create a new comment object
+    const newComment = {
+        id: Math.floor(Math.random() * 1000) + 10,
+        post_id: postId,
+        user_id: 'current.user@voterdatahouse.com',
+        content: content,
+        created_at: new Date().toISOString()
+    };
+    
+    // Get existing comments
+    const commentsContainer = document.querySelector(`#post-${postId} .comments-list`);
+    const existingComments = [];
+    
+    // Check if there are already comments
+    if (!commentsContainer.querySelector('.text-muted')) {
+        // Parse existing comments
+        const commentElements = commentsContainer.querySelectorAll('.comment');
+        commentElements.forEach(element => {
+            const userId = element.querySelector('.fw-bold.small').textContent;
+            const commentText = element.querySelector('.small').textContent;
+            existingComments.push({
+                id: Math.floor(Math.random() * 1000),
+                post_id: postId,
+                user_id: userId,
+                content: commentText,
+                created_at: new Date(Date.now() - 60000).toISOString() // 1 minute ago
+            });
+        });
+    }
+    
+    // Add the new comment to the list
+    existingComments.push(newComment);
+    
+    // Render all comments
+    renderComments(postId, existingComments);
+    
+    // Clear the input field
+    inputElement.value = '';
+    
+    // Show success toast
+    showToast('Success', 'Comment added successfully');
+}
+
+// Fix for modal background
+function setupModalEvents() {
+    // Close modal when clicking close button
+    const closeButtons = document.querySelectorAll('.modal .btn-close, .modal .close-btn');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            closeModal(this.closest('.modal').id);
+        });
+    });
+    
+    // Close modal when clicking outside
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            closeModal(event.target.id);
+        }
+    });
+}
+
+// Function to properly close modals
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    
+    // Hide the modal
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+    
+    // Remove modal-open class from body
+    document.body.classList.remove('modal-open');
+    
+    // Remove the backdrop
+    const backdrop = document.querySelector('.modal-backdrop');
+    if (backdrop) {
+        backdrop.remove();
+    }
+    
+    // Also remove any inline styles that Bootstrap might have added
+    document.body.removeAttribute('style');
+}
+
+// Show toast notifications
+function showToast(title, message) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toastId = 'toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'toast';
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    toast.innerHTML = `
+        <div class="toast-header">
+            <strong class="me-auto">${title}</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Initialize and show the toast
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remove toast after it's hidden
+    toast.addEventListener('hidden.bs.toast', function() {
+        toast.remove();
+    });
+}
+
+// Improved markAsComplete function
+function markAsComplete(postId) {
+    // Find the post element
+    const postElement = document.getElementById(`post-${postId}`);
+    if (!postElement) return;
+    
+    // Find and update the status badge
+    const statusBadge = postElement.querySelector('.badge');
+    if (statusBadge) {
+        statusBadge.className = 'badge bg-secondary me-1';
+        statusBadge.textContent = 'Completed';
+    }
+    
+    // Show success toast
+    showToast('Success', `Post ${postId} marked as complete!`);
+    
+    console.log(`Post ${postId} marked as complete`);
+}
+
+// Initialize modal event handlers when document is ready
+document.addEventListener('DOMContentLoaded', function() {
+    setupModalEvents();
+    
+    // Add comments sections to posts
+    setTimeout(() => {
+        const posts = document.querySelectorAll('.post-card');
+        posts.forEach(post => {
+            const postId = post.id.replace('post-', '');
+            
+            // Check if comments section already exists
+            if (!post.querySelector('.comments-section')) {
+                const commentsSection = document.createElement('div');
+                commentsSection.className = 'comments-section mt-3';
+                commentsSection.innerHTML = `
+                    <h6>Comments</h6>
+                    <div class="comments-list">
+                        <div class="text-muted small">No comments yet</div>
+                    </div>
+                    <div class="input-group mt-2">
+                        <input type="text" class="form-control" placeholder="Add a comment...">
+                        <button class="btn btn-outline-primary" onclick="addComment(${postId})">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Add comments section after the action widget
+                const cardBody = post.querySelector('.card-body');
+                if (cardBody) {
+                    cardBody.appendChild(commentsSection);
+                }
+            }
+            
+            // Load sample comments
+            loadComments(postId);
+        });
+    }, 1000); // Wait for posts to be loaded
+});
