@@ -711,3 +711,151 @@ function determineActionType(title, content) {
     
     return 'general';
 }
+// Add this code at the end of your main.js file
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Get the submit button for the new post form
+  const submitButton = document.getElementById('submitNewPost');
+  
+  if (submitButton) {
+    console.log('Submit button found: #submitNewPost');
+    
+    submitButton.addEventListener('click', function() {
+      console.log('Submit button clicked');
+      
+      // Get form values
+      const title = document.getElementById('postTitle').value;
+      const category = document.getElementById('postCategory').value;
+      const actionType = document.getElementById('postActionType').value;
+      const content = document.getElementById('postContent').value;
+      const sender = document.getElementById('postSender').value;
+      const recipient = document.getElementById('postRecipient').value;
+      
+      // Validate form
+      if (!title || !category || !actionType || !content) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      // Create post data
+      const postData = {
+        id: Date.now(), // Generate a unique ID
+        title: title,
+        content: content,
+        category: category,
+        action_type: actionType,
+        sender: sender,
+        recipient: recipient,
+        status: 'new',
+        created_at: new Date().toISOString()
+      };
+      
+      console.log('Creating new post:', postData);
+      
+      // Try to save to Supabase if available
+      if (typeof supabaseClient !== 'undefined') {
+        try {
+          supabaseClient
+            .from('posts')
+            .insert(postData)
+            .then(response => {
+              if (response.error) {
+                console.error('Error inserting post to Supabase:', response.error);
+                // Fall back to adding to UI only
+                addNewPost(postData);
+              } else {
+                console.log('Post added to Supabase successfully');
+                // Refresh posts to show the new one
+                fetchPosts();
+              }
+            });
+        } catch (error) {
+          console.error('Error with Supabase:', error);
+          // Fall back to adding to UI only
+          addNewPost(postData);
+        }
+      } else {
+        // If Supabase isn't available, just add to UI
+        addNewPost(postData);
+      }
+      
+      // Close the modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('newPostModal'));
+      if (modal) {
+        modal.hide();
+      }
+      
+      // Reset form fields
+      document.getElementById('postTitle').value = '';
+      document.getElementById('postContent').value = '';
+      document.getElementById('postCategory').selectedIndex = 0;
+      document.getElementById('postActionType').selectedIndex = 0;
+    });
+  } else {
+    console.warn('Submit button not found: #submitNewPost');
+  }
+});
+
+// Function to add a new post to the UI directly
+function addNewPost(postData) {
+  // Format the date
+  const formattedDate = formatDate(postData.created_at);
+  
+  // Create the HTML for the new post
+  const postHtml = `
+    <div class="card post-card">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <div>
+          <span class="badge bg-success me-1">New</span>
+          <span class="badge bg-${getCategoryColor(postData.category)} category-badge me-2">${postData.category}</span>
+          <strong>${postData.title}</strong>
+        </div>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-three-dots-vertical"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#"><i class="bi bi-bookmark-plus"></i> Save</a></li>
+            <li><a class="dropdown-item" href="#"><i class="bi bi-forward"></i> Forward</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-archive"></i> Archive</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="user-avatar bg-secondary me-2">
+              ${getInitials(postData.sender)}
+            </div>
+            <div>
+              <div class="fw-bold">${postData.sender}</div>
+              <div class="text-muted small">to ${postData.recipient}</div>
+            </div>
+            <div class="ms-auto text-muted small">
+              ${formattedDate}
+            </div>
+          </div>
+          <div class="post-content">${postData.content.replace(/\n/g, '<br>')}</div>
+        </div>
+        
+        ${generateActionWidget(postData)}
+      </div>
+    </div>
+  `;
+  
+  // Add the new post to the beginning of the posts container
+  const postsContainer = document.getElementById('posts-container');
+  postsContainer.insertAdjacentHTML('afterbegin', postHtml);
+  
+  // Update the category counts
+  const allPosts = document.querySelectorAll('.post-card');
+  const postsData = Array.from(allPosts).map(post => {
+    const categoryBadge = post.querySelector('.category-badge');
+    return {
+      category: categoryBadge ? categoryBadge.textContent : 'General'
+    };
+  });
+  
+  updateCategoryCounts(postsData);
+}
