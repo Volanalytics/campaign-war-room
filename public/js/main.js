@@ -467,45 +467,6 @@ function renderComments(comments) {
     return html;
 }
 
-// Function to add a new comment
-function addComment(postId, button) {
-    // Get the comment text
-    const commentSection = button.closest('.add-comment');
-    const commentInput = commentSection.querySelector('.comment-input');
-    const commentText = commentInput.value.trim();
-    
-    if (!commentText) {
-        alert('Please enter a comment');
-        return;
-    }
-    
-    // Create comment object
-    const newComment = {
-        id: Date.now(), // Simple unique ID
-        post_id: postId,
-        user_id: 'user@voterdatahouse.com', // In a real app, this would be the logged-in user
-        content: commentText,
-        created_at: new Date().toISOString()
-    };
-    
-    // In a real app, you would save this to Supabase
-    // For now, we'll just add it to our sample data
-    const post = campaignPosts.find(p => p.id === postId);
-    if (post) {
-        if (!post.comments) {
-            post.comments = [];
-        }
-        post.comments.push(newComment);
-        
-        // Update the comments section
-        const commentsSection = button.closest('.comments-section');
-        const commentsList = commentsSection.querySelector('.comments-list');
-        commentsList.innerHTML = renderComments(post.comments);
-        
-        // Clear the input
-        commentInput.value = '';
-    }
-}
 
 // Function to mark a post as complete
 async function markAsComplete(postId) {
