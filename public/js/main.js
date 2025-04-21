@@ -18,30 +18,47 @@ async function fetchPosts(category = null, sort = 'newest') {
     document.getElementById('post-loading').style.display = 'block';
     document.getElementById('posts-container').innerHTML = '';
     
-    // Build query parameters
-    let queryParams = new URLSearchParams();
-    if (category && category !== 'All Posts') {
-        queryParams.append('category', category.replace(' Posts', '').trim());
-    }
-    queryParams.append('sort', sort);
-    
     try {
-        // Adjust the API path to match your server structure on Render.com
-        // Try one of these alternatives based on your server configuration
-        const apiBase = '/server/api'; // Option 1
-        // const apiBase = '/api'; // Option 2
-        // const apiBase = ''; // Option 3 (if API is at root)
+        // Use the supabaseClient defined in your auth.js file
+        let query = supabaseClient.from('posts').select('*');
         
-        const response = await fetch(`${apiBase}/posts?${queryParams.toString()}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        // Add category filter if provided
+        if (category && category !== 'All Posts' && category !== 'All Actions') {
+            const categoryName = category.replace(' Posts', '').trim();
+            query = query.eq('category', categoryName);
         }
         
-        const data = await response.json();
+        // Add sorting
+        if (sort === 'newest') {
+            query = query.order('created_at', { ascending: false });
+        } else if (sort === 'oldest') {
+            query = query.order('created_at', { ascending: true });
+        } else if (sort === 'priority') {
+            // For priority sorting, we need to handle this after fetching the data
+            // Since Supabase doesn't support custom sort expressions easily
+        }
+        
+        // Execute the query
+        const { data, error } = await query;
+        
+        if (error) {
+            throw new Error(`Supabase error: ${error.message}`);
+        }
+        
+        // Apply priority sorting if needed (Urgent category first)
+        if (sort === 'priority') {
+            data.sort((a, b) => {
+                if (a.category === 'Urgent' && b.category !== 'Urgent') return -1;
+                if (a.category !== 'Urgent' && b.category === 'Urgent') return 1;
+                // If both are urgent or both are not, sort by date (newest first)
+                return new Date(b.created_at) - new Date(a.created_at);
+            });
+        }
+        
         console.log('Posts:', data);
         
         // Render the posts
-        renderPosts(data);
+        renderPosts(data && data.length ? data : []);
     } catch (error) {
         console.error('Error fetching posts:', error);
         
@@ -51,14 +68,51 @@ async function fetchPosts(category = null, sort = 'newest') {
             `<div class="alert alert-danger">
                 <p>Error loading posts. Please try again later.</p>
                 <p><strong>Error details:</strong> ${error.message}</p>
-                <p>If you're seeing a 404 error, check your server configuration and API paths.</p>
             </div>`;
             
-        // For demonstration during development, load sample data
-        if (error.message.includes('404')) {
-            console.log('Loading sample data for development...');
-            loadSamplePosts();
+        // Fall back to sample data for development
+        console.log('Loading sample data for development...');
+        loadSamplePosts();
+    }
+}
+
+// Function to mark a post as complete
+async function markAsComplete(postId) {
+    try {
+        // Update the post status in Supabase
+        const { data, error } = await supabaseClient
+            .from('posts')
+            .update({ 
+                status: 'completed',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', postId);
+            
+        if (error) {
+            throw new Error(`Supabase error: ${error.message}`);
         }
+        
+        // Success - refresh the posts
+        alert(`Post ${postId} marked as complete!`);
+        
+        // Get the active category and sort
+        const activeCategory = document.querySelector('#categories-list .sidebar-item.active span:first-child').textContent.trim();
+        const sortDropdown = document.querySelector('#sortDropdown + .dropdown-menu .dropdown-item.active');
+        let sortValue = 'newest';
+        
+        if (sortDropdown) {
+            if (sortDropdown.textContent.includes('Oldest')) {
+                sortValue = 'oldest';
+            } else if (sortDropdown.textContent.includes('Priority')) {
+                sortValue = 'priority';
+            }
+        }
+        
+        // Refresh the posts
+        fetchPosts(activeCategory, sortValue);
+    } catch (error) {
+        console.error('Error marking post as complete:', error);
+        alert(`An error occurred: ${error.message}`);
     }
 }
 
