@@ -12,6 +12,82 @@ document.addEventListener('DOMContentLoaded', function() {
     setupSortDropdown();
 });
 
+// Add this code to your main.js file to improve modal focus management
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Fix for modal focus management
+  const newPostModal = document.getElementById('newPostModal');
+  if (newPostModal) {
+    // Store the element that had focus before opening the modal
+    let previouslyFocusedElement = null;
+    
+    // Listen for modal open
+    newPostModal.addEventListener('show.bs.modal', function() {
+      // Save the current focus
+      previouslyFocusedElement = document.activeElement;
+    });
+    
+    // Listen for modal close
+    newPostModal.addEventListener('hidden.bs.modal', function() {
+      // Clear focus from any element inside the modal
+      const focusedElementInModal = newPostModal.querySelector(':focus');
+      if (focusedElementInModal) {
+        focusedElementInModal.blur();
+      }
+      
+      // Return focus to the element that had focus before the modal was opened
+      if (previouslyFocusedElement) {
+        // Small delay to ensure the modal is fully hidden
+        setTimeout(() => {
+          previouslyFocusedElement.focus();
+        }, 10);
+      }
+    });
+    
+    // Ensure the submit button properly releases focus when clicked
+    const submitButton = document.getElementById('submitNewPost');
+    if (submitButton) {
+      submitButton.addEventListener('click', function() {
+        // Release focus before the modal starts to close
+        this.blur();
+      });
+    }
+  }
+
+  // Apply the same fix to other modals if needed
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (modal.id !== 'newPostModal') { // Skip the one we already handled
+      let previousFocus = null;
+      
+      modal.addEventListener('show.bs.modal', function() {
+        previousFocus = document.activeElement;
+      });
+      
+      modal.addEventListener('hidden.bs.modal', function() {
+        const focusedElement = modal.querySelector(':focus');
+        if (focusedElement) {
+          focusedElement.blur();
+        }
+        
+        if (previousFocus) {
+          setTimeout(() => {
+            previousFocus.focus();
+          }, 10);
+        }
+      });
+      
+      // Find and handle submit buttons in this modal
+      const submitBtns = modal.querySelectorAll('.btn-primary');
+      submitBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          this.blur();
+        });
+      });
+    }
+  });
+});
+
 // Function to fetch posts
 async function fetchPosts(category = null, sort = 'newest') {
     // Show loading indicator
