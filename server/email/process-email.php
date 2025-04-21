@@ -2,179 +2,189 @@
 // Script to process incoming emails
 error_log('Email processing script started');
 
-// Get the request data - could be from webhook, pipe, or form
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Webhook data
-    $email_content = file_get_contents('php://input');
-    processWebhook($email_content);
-} else if (isset($_GET['test'])) {
-    // Test mode
-    processTestEmail();
-} else {
-    // Direct pipe from email server
-    $email_content = file_get_contents('php://stdin');
-    processEmail($email_content);
-}
+// Database connection configuration
+require_once __DIR__ . '/../config/database.php';
 
-// Process a test email
-function processTestEmail() {
+// For testing directly through web access
+$test_mode = isset($_GET['test']) && $_GET['test'] == 1;
+
+if ($test_mode) {
     // Test data
-    $sender = 'test@example.com';
-    $recipient = 'info@voterdatahouse.com';
-    $subject = 'Test Email: Volunteer Request';
-    $body = "We need 3 additional volunteers for this Saturday's canvassing effort in the Mt. Juliet area.\n\nThis is a critical area for our campaign, and we need to make personal connections with these voters before the upcoming debate. If you can help, please respond ASAP!";
+    $sender = isset($_GET['sender']) ? $_GET['sender'] : 'test@example.com';
+    $recipient = isset($_GET['recipient']) ? $_GET['recipient'] : 'info@vpterdatahouse.com';
+    $subject = isset($_GET['subject']) ? $_GET['subject'] : 'Test Email';
+    $body = isset($_GET['body']) ? $_GET['body'] : "This is a test email body\n\nIt contains multiple lines of text.";
     
-    createActionItem($sender, $recipient, $subject, $body);
-    echo "Test email processed";
-}
-
-// Process a webhook payload
-function processWebhook($payload) {
-    // This would be customized based on your email service's webhook format
-    $data = json_decode($payload, true);
+    $result = processEmail($sender, $recipient, $subject, $body);
     
-    // Extract email details - format depends on your email service
-    $sender = $data['from'] ?? 'unknown@example.com';
-    $recipient = $data['to'] ?? 'info@voterdatahouse.com';
-    $subject = $data['subject'] ?? 'No Subject';
-    $body = $data['body-plain'] ?? 'No Content';
+    // Return JSON response for testing
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => $result,
+        'message' => $result ? 'Email processed successfully' : 'Failed to process email',
+        'details' => [
+            'sender' => $sender,
+            'recipient' => $recipient,
+            'subject' => $subject,
+            'body_preview' => substr($body, 0, 100) . (strlen($body) > 100 ? '...' : '')
+        ]
+    ]);
+    exit;
+} else {
+    // Read email from stdin for pipe delivery or webhook
+    $email_content = file_get_contents('php://stdin');
     
-    createActionItem($sender, $recipient, $subject, $body);
-    echo "Webhook processed";
-}
-
-// Process raw email content
-function processEmail($email_content) {
-    // Simple parsing for demonstration
-    // In a real app, you'd use a library like Mail_mimeDecode
-    $sender = extractHeader($email_content, 'From');
-    $recipient = extractHeader($email_content, 'To');
-    $subject = extractHeader($email_content, 'Subject');
+    // In a real implementation, you would need a proper email parser library
+    // This is a simplified example that assumes a specific format
     
-    // Extract body (simple approach)
-    $parts = explode("\r\n\r\n", $email_content, 2);
-    $body = $parts[1] ?? '';
+    // Extract headers and body
+    list($headers, $body) = explode("\r\n\r\n", $email_content, 2);
     
-    createActionItem($sender, $recipient, $subject, $body);
-}
-
-// Helper function to extract headers
-function extractHeader($email, $header) {
-    if (preg_match('/^' . $header . ': (.*)$/m', $email, $matches)) {
-        return $matches[1];
+    // Parse headers (very simplified)
+    $sender = '';
+    $recipient = '';
+    $subject = '';
+    
+    foreach (explode("\r\n", $headers) as $header) {
+        if (strpos($header, 'From:') === 0) {
+            $sender = trim(substr($header, 5));
+            // Extract email from "Name <email>" format if needed
+            if (preg_match('/<(.+?)>/', $sender, $matches)) {
+                $sender = $matches[1];
+            }
+        } else if (strpos($header, 'To:') === 0) {
+            $recipient = trim(substr($header, 3));
+            // Extract email from "Name <email>" format if needed
+            if (preg_match('/<(.+?)>/', $recipient, $matches)) {
+                $recipient = $matches[1];
+            }
+        } else if (strpos($header, 'Subject:') === 0) {
+            $subject = trim(substr($header, 8));
+        }
     }
-    return '';
+    
+    // Process the email
+    $result = processEmail($sender, $recipient, $subject, $body);
+    error_log("Email processing result: " . ($result ? 'success' : 'failure'));
 }
 
-// Create an action item in the database
-function createActionItem($sender, $recipient, $subject, $body) {
+// Function to process the email and store in the database
+function processEmail($sender, $recipient, $subject, $body) {
+    global $db;
+    
+    error_log("Processing email from: $sender");
+    error_log("Subject: $subject");
+    
     // Determine category and action type based on content
     $category = determineCategory($subject, $body);
     $action_type = determineActionType($subject, $body);
     
-    // Connect to Supabase using API (since this is PHP)
-    $supabase_url = getenv('SUPABASE_URL');
-    $supabase_key = getenv('SUPABASE_KEY');
-    
-    // Prepare the data
-    $data = [
-        'title' => $subject,
-        'content' => $body,
-        'sender' => $sender,
-        'recipient' => $recipient,
-        'category' => $category,
-        'action_type' => $action_type,
-        'status' => 'new',
-        'created_at' => date('c')
-    ];
-    
-    // Send to Supabase REST API
-    $ch = curl_init($supabase_url . '/rest/v1/posts');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $supabase_key,
-        'apikey: ' . $supabase_key
-    ]);
-    
-    $response = curl_exec($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    error_log("Created action item with status $status: " . substr($response, 0, 100));
-    
-    return $status >= 200 && $status < 300;
+    try {
+        // Insert into the posts table
+        $stmt = $db->prepare("
+            INSERT INTO posts (title, content, sender, recipient, category, action_type, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'new', NOW())
+        ");
+        
+        $stmt->execute([
+            $subject,
+            $body,
+            $sender,
+            $recipient,
+            $category,
+            $action_type
+        ]);
+        
+        error_log("Email processed successfully. Post ID: " . $db->lastInsertId());
+        return true;
+    } catch (PDOException $e) {
+        error_log("Database error: " . $e->getMessage());
+        return false;
+    }
 }
 
-// Determine category based on content
+// Function to determine the category based on email content
 function determineCategory($subject, $body) {
     $subject_lower = strtolower($subject);
     $body_lower = strtolower($body);
     
-    if (strpos($subject_lower, 'urgent') !== false || 
-        strpos($body_lower, 'urgent') !== false ||
-        strpos($body_lower, 'immediately') !== false) {
+    // Check for urgent markers
+    if (
+        strpos($subject_lower, 'urgent') !== false || 
+        strpos($subject_lower, 'emergency') !== false ||
+        strpos($subject_lower, 'asap') !== false ||
+        strpos($body_lower, 'urgent') !== false
+    ) {
         return 'Urgent';
     }
     
-    if (strpos($subject_lower, 'volunteer') !== false || 
-        strpos($body_lower, 'volunteer') !== false ||
-        strpos($body_lower, 'canvass') !== false) {
-        return 'Volunteer';
-    }
-    
-    if (strpos($subject_lower, 'social') !== false || 
+    // Check for social media related content
+    if (
+        strpos($subject_lower, 'social media') !== false ||
+        strpos($subject_lower, 'facebook') !== false ||
+        strpos($subject_lower, 'twitter') !== false ||
+        strpos($subject_lower, 'linkedin') !== false ||
         strpos($body_lower, 'social media') !== false ||
-        strpos($body_lower, 'twitter') !== false ||
-        strpos($body_lower, 'facebook') !== false) {
+        strpos($body_lower, 'share on') !== false
+    ) {
         return 'Social Media';
     }
     
-    if (strpos($subject_lower, 'event') !== false || 
-        strpos($body_lower, 'event') !== false ||
-        strpos($body_lower, 'meeting') !== false) {
-        return 'Events';
-    }
-    
-    if (strpos($subject_lower, 'response') !== false || 
+    // Check for email response requests
+    if (
+        strpos($subject_lower, 'please respond') !== false ||
+        strpos($subject_lower, 'response needed') !== false ||
         strpos($body_lower, 'please respond') !== false ||
-        strpos($body_lower, 'email back') !== false) {
+        strpos($body_lower, 'please reply') !== false ||
+        strpos($body_lower, 'response needed') !== false
+    ) {
         return 'Email Action';
     }
     
+    // Default category
     return 'General';
 }
 
-// Determine action type based on content
+// Function to determine the action type based on email content
 function determineActionType($subject, $body) {
     $subject_lower = strtolower($subject);
     $body_lower = strtolower($body);
     
-    if (strpos($subject_lower, 'volunteer') !== false || 
-        strpos($body_lower, 'volunteer') !== false) {
-        return 'volunteer_request';
+    // Check for technical support issues
+    if (
+        strpos($subject_lower, 'error') !== false ||
+        strpos($subject_lower, 'issue') !== false ||
+        strpos($subject_lower, 'problem') !== false ||
+        strpos($subject_lower, 'not working') !== false ||
+        strpos($body_lower, 'error') !== false ||
+        strpos($body_lower, 'broken') !== false ||
+        strpos($body_lower, 'fix') !== false
+    ) {
+        return 'technical_support';
     }
     
-    if (strpos($subject_lower, 'social') !== false || 
-        strpos($body_lower, 'share') !== false ||
-        strpos($body_lower, 'post') !== false) {
+    // Check for social media sharing
+    if (
+        strpos($subject_lower, 'share') !== false ||
+        strpos($subject_lower, 'post on') !== false ||
+        strpos($body_lower, 'share this') !== false ||
+        strpos($body_lower, 'post this') !== false
+    ) {
         return 'social_share';
     }
     
-    if (strpos($subject_lower, 'respond') !== false || 
-        strpos($body_lower, 'respond') !== false ||
-        strpos($body_lower, 'reply') !== false) {
+    // Check for email response needed
+    if (
+        strpos($subject_lower, 'please respond') !== false ||
+        strpos($subject_lower, 'response needed') !== false ||
+        strpos($body_lower, 'please respond') !== false ||
+        strpos($body_lower, 'please reply') !== false ||
+        strpos($body_lower, 'response needed') !== false
+    ) {
         return 'email_response';
     }
     
-    if (strpos($subject_lower, 'event') !== false || 
-        strpos($body_lower, 'event') !== false ||
-        strpos($body_lower, 'organize') !== false) {
-        return 'event_coordination';
-    }
-    
+    // Default action type
     return 'general';
 }
 ?>
