@@ -156,25 +156,57 @@
             </div>
             
             <!-- Main content -->
-            <div class="col-md-9 col-lg-10 ms-sm-auto px-md-4 py-4">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">Campaign Action Feed</h1>
-                    <div class="btn-toolbar mb-2 mb-md-0">
-                        <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#newPostModal">
-                          <i class="bi bi-plus-lg"></i> New Action
-                        </button>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-sort-down"></i> Sort by
-                            </button>
-                            <ul class="dropdown-menu" aria-labelledby="sortDropdown">
-                                <li><a class="dropdown-item active" href="#">Newest first</a></li>
-                                <li><a class="dropdown-item" href="#">Oldest first</a></li>
-                                <li><a class="dropdown-item" href="#">Priority</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Campaign Action Feed</h1>
+    <div class="d-flex align-items-center">
+        <!-- Auth Status / User Menu -->
+        <div class="me-3">
+            <!-- Shown when logged out -->
+            <div id="loggedOutMenu">
+                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    <i class="bi bi-person"></i> Log In
+                </button>
+            </div>
+            
+            <!-- Shown when logged in -->
+            <div id="loggedInMenu" class="dropdown d-none">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="user-avatar bg-primary me-1" style="width: 24px; height: 24px; font-size: 0.7em;"></span>
+                    <span id="userDisplayName">User</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
+                    <li><span class="dropdown-item-text" id="userRole">Role: Member</span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <!-- Admin-only menu items -->
+                    <li class="admin-only d-none"><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#userManagementModal">
+                        <i class="bi bi-people"></i> Manage Users
+                    </a></li>
+                    <li class="admin-only d-none"><hr class="dropdown-divider"></li>
+                    <!-- End admin-only items -->
+                    <li><a class="dropdown-item" href="#" id="logoutButton">
+                        <i class="bi bi-box-arrow-right"></i> Log Out
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#newPostModal">
+                <i class="bi bi-plus-lg"></i> New Action
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-sort-down"></i> Sort by
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                    <li><a class="dropdown-item active" href="#">Newest first</a></li>
+                    <li><a class="dropdown-item" href="#">Oldest first</a></li>
+                    <li><a class="dropdown-item" href="#">Priority</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
                 
                 <div id="post-loading" class="text-center p-5">
                     <div class="spinner-border text-primary" role="status">
@@ -252,10 +284,141 @@
       </div>
     </div>
 
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">Log In</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label for="loginEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="loginEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="loginPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="loginPassword" required>
+                        </div>
+                        <div id="loginError" class="alert alert-danger d-none"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#signupModal">Create Account</button>
+                    <button type="button" class="btn btn-primary" id="loginButton">Log In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signup Modal -->
+    <div class="modal fade" id="signupModal" tabindex="-1" aria-labelledby="signupModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="signupModalLabel">Create Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="signupForm">
+                        <div class="mb-3">
+                            <label for="signupFullName" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="signupFullName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="signupEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="signupEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="signupPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="signupPassword" required>
+                            <div class="form-text">Password must be at least 8 characters long</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="signupPasswordConfirm" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="signupPasswordConfirm" required>
+                        </div>
+                        <div id="signupError" class="alert alert-danger d-none"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#loginModal">Back to Login</button>
+                    <button type="button" class="btn btn-primary" id="signupButton">Create Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Panel (Admin Only) -->
+    <div class="modal fade" id="userManagementModal" tabindex="-1" aria-labelledby="userManagementModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userManagementModalLabel">User Management</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="userTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab">Pending Approval</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab">Active Users</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3">
+                        <div class="tab-pane fade show active" id="pending" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Requested</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pendingUsersTable">
+                                        <!-- Pending users will be loaded here -->
+                                        <tr>
+                                            <td colspan="4" class="text-center">Loading pending users...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="active" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activeUsersTable">
+                                        <!-- Active users will be loaded here -->
+                                        <tr>
+                                            <td colspan="4" class="text-center">Loading active users...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     <script src="/js/supabase-client.js"></script>
+    <script src="/js/auth.js"></script>
     <script src="/js/main.js"></script>
 </body>
 </html>
