@@ -1,13 +1,21 @@
 <?php
-
-
+/**
+ * Email Polling Script for Action Hub using Supabase API
+ * 
+ * This script connects to an email inbox via IMAP,
+ * checks for new messages, and processes them into Supabase
+ * using direct API calls (no database driver required).
+ * 
+ * Set this up as a cron job to run periodically, e.g.:
+ * */5 * * * * php /path/to/server/email/supabase-poll-email.php
+ */
 
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 // Log file for tracking script execution
-$log_file = __DIR__ . '/poll-email.log';
+$log_file = __DIR__ . '/supabase-poll-email.log';
 
 // Function to log messages
 function log_message($message) {
@@ -17,28 +25,36 @@ function log_message($message) {
 }
 
 // Start logging
-log_message("Email polling started");
+log_message("Email polling started with Supabase API integration");
 
-// Include database configuration
-require_once __DIR__ . '/../config/database.php';
+// Supabase configuration - UPDATE THESE VALUES
+$supabase_url = 'https://xhqzjelmxblchcdcdigv.supabase.co';  // Your Supabase URL
+$supabase_key = 'YOUR_SUPABASE_API_KEY';  // Your Supabase API key
 
-// Email configuration
+// Email configuration - UPDATE THESE VALUES
 $email_config = [
-    'host'     => 'imap.titan.email', // IMAP server host
-    'port'     => 993,                // IMAP port (usually 993 for SSL)
-    'username' => 'campaign101@voterdatahouse.com', // Email address
-    'password' => '2026Braden09#',     // Email password
+    'host'     => 'imap.titan.email', // Titan Mail IMAP server
+    'port'     => 993,                // IMAP port with SSL
+    'username' => 'campaign101@voterdatahouse.com', // Your email address
+    'password' => '2026Braden09#',     // Your email password
     'mailbox'  => 'INBOX',            // Mailbox to check
     'ssl'      => true,               // Use SSL/TLS
     'processed_folder' => 'Processed' // Folder to move processed emails to
 ];
+
+// Check if IMAP extension is loaded
+if (!extension_loaded('imap')) {
+    log_message("ERROR: The IMAP extension is not loaded in PHP. Using mock emails instead.");
+    insertMockEmails();
+    exit;
+}
 
 // Connect to IMAP server
 $mailbox_string = '{' . $email_config['host'] . ':' . $email_config['port'];
 
 // Add SSL if needed
 if ($email_config['ssl']) {
-    $mailbox_string .= '/imap/ssl';
+    $mailbox_string .= '/imap/ssl/novalidate-cert'; // Added novalidate-cert for Titan Mail
 }
 
 // Complete the mailbox string
@@ -47,7 +63,7 @@ $mailbox_string .= '}' . $email_config['mailbox'];
 // Try to connect to the mailbox
 try {
     log_message("Connecting to mailbox: $mailbox_string");
-    $inbox = imap_open($mailbox_string, $email_config['username'], $email_config['password']);
+    $inbox = @imap_open($mailbox_string, $email_config['username'], $email_config['password']);
 
     if (!$inbox) {
         throw new Exception("Failed to connect to mailbox: " . imap_last_error());
@@ -124,7 +140,7 @@ try {
         
         log_message("Email details - From: $sender, To: $recipient, Subject: $subject");
         
-        // Process the email using the same logic as process-email.php
+        // Process the email and insert into Supabase
         try {
             // Determine category and action type
             $category = determineCategory($subject, $body);
@@ -132,24 +148,23 @@ try {
             
             log_message("Categorized as: $category, Action type: $action_type");
             
-            // Insert into database
-            $stmt = $db->prepare("
-                INSERT INTO posts (title, content, sender, recipient, category, action_type, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'new', NOW())
-            ");
+            // Create post data for Supabase
+            $postData = [
+                'title' => $subject,
+                'content' => $body,
+                'sender' => $sender,
+                'recipient' => $recipient,
+                'category' => $category,
+                'action_type' => $action_type,
+                'status' => 'new',
+                'created_at' => date('c') // ISO 8601 format
+            ];
             
-            $result = $stmt->execute([
-                $subject,
-                $body,
-                $sender,
-                $recipient,
-                $category,
-                $action_type
-            ]);
+            // Insert into Supabase using cURL
+            $result = insertIntoSupabase($postData);
             
             if ($result) {
-                $postId = $db->lastInsertId();
-                log_message("Email successfully processed and inserted as post #$postId");
+                log_message("Email successfully inserted into Supabase");
                 
                 // Move the email to the processed folder
                 if (imap_mail_move($inbox, $email_number, $email_config['processed_folder'])) {
@@ -158,7 +173,7 @@ try {
                     log_message("Failed to move email: " . imap_last_error());
                 }
             } else {
-                log_message("Failed to insert post into database");
+                log_message("Failed to insert into Supabase");
             }
         } catch (Exception $e) {
             log_message("Error processing email: " . $e->getMessage());
@@ -172,8 +187,70 @@ try {
     
 } catch (Exception $e) {
     log_message("Error: " . $e->getMessage());
+    
+    // Insert mock emails as fallback
+    if (strpos($e->getMessage(), "Failed to connect to mailbox") !== false) {
+        log_message("Falling back to mock emails due to IMAP connection failure");
+        insertMockEmails();
+    }
+    
     if (isset($inbox) && $inbox) {
         imap_close($inbox);
+    }
+}
+
+// Function to insert into Supabase using cURL
+function insertIntoSupabase($data) {
+    global $supabase_url, $supabase_key;
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $supabase_url . '/rest/v1/posts');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $supabase_key,
+        'apikey: ' . $supabase_key
+    ]);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    log_message("Supabase API response code: $httpCode");
+    
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return true;
+    } else {
+        log_message("API Error: $response");
+        return false;
+    }
+}
+
+// Function to insert mock emails
+function insertMockEmails() {
+    log_message("Inserting mock emails as fallback");
+    
+    // Create a mock email
+    $mockEmail = [
+        'title' => 'Email System Alert: IMAP Connection Failed',
+        'content' => "This is an automated message from the email polling system.\n\nThe system was unable to connect to the email server via IMAP. Please check your email settings and credentials.\n\nThis message was generated at " . date('Y-m-d H:i:s'),
+        'sender' => 'system@voterdatahouse.com',
+        'recipient' => 'admin@voterdatahouse.com',
+        'category' => 'Urgent',
+        'action_type' => 'technical_support',
+        'status' => 'new',
+        'created_at' => date('c')
+    ];
+    
+    // Insert mock email
+    $result = insertIntoSupabase($mockEmail);
+    
+    if ($result) {
+        log_message("Mock email successfully inserted");
+    } else {
+        log_message("Failed to insert mock email");
     }
 }
 
@@ -213,6 +290,27 @@ function determineCategory($subject, $body) {
         strpos($body_lower, 'response needed') !== false
     ) {
         return 'Email Action';
+    }
+    
+    // Check for volunteer related content
+    if (
+        strpos($subject_lower, 'volunteer') !== false ||
+        strpos($subject_lower, 'volunteering') !== false ||
+        strpos($body_lower, 'volunteer') !== false ||
+        strpos($body_lower, 'volunteers needed') !== false
+    ) {
+        return 'Volunteer';
+    }
+    
+    // Check for event related content
+    if (
+        strpos($subject_lower, 'event') !== false ||
+        strpos($subject_lower, 'meeting') !== false ||
+        strpos($body_lower, 'event') !== false ||
+        strpos($body_lower, 'schedule') !== false ||
+        strpos($body_lower, 'calendar') !== false
+    ) {
+        return 'Events';
     }
     
     // Default category
@@ -256,6 +354,27 @@ function determineActionType($subject, $body) {
         strpos($body_lower, 'response needed') !== false
     ) {
         return 'email_response';
+    }
+    
+    // Check for volunteer requests
+    if (
+        strpos($subject_lower, 'volunteer') !== false ||
+        strpos($subject_lower, 'volunteering') !== false ||
+        strpos($body_lower, 'volunteer') !== false ||
+        strpos($body_lower, 'volunteers needed') !== false
+    ) {
+        return 'volunteer_request';
+    }
+    
+    // Check for event coordination
+    if (
+        strpos($subject_lower, 'event') !== false ||
+        strpos($subject_lower, 'meeting') !== false ||
+        strpos($body_lower, 'event') !== false ||
+        strpos($body_lower, 'schedule') !== false ||
+        strpos($body_lower, 'calendar') !== false
+    ) {
+        return 'event_coordination';
     }
     
     // Default action type
