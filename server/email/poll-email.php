@@ -6,9 +6,7 @@
  * checks for new messages, and processes them into
  * the Action Hub system.
  * 
- * Set this up as a cron job to run periodically, e.g.:
- * */5 * * * * php /path/to/server/email/poll-email.php
- */
+
 
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
