@@ -19,19 +19,26 @@ const CONFIG = {
   DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN,
   
   // Email configuration
-  EMAIL_SERVICE: process.env.EMAIL_SERVICE || 'gmail',
+  EMAIL_HOST: process.env.EMAIL_HOST || 'smtp.titan.email',
+  EMAIL_PORT: process.env.EMAIL_PORT || 587,
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS,
-  TARGET_EMAIL: process.env.TARGET_EMAIL || 'info@vpterdatahouse.com',
+  TARGET_EMAIL: process.env.TARGET_EMAIL || 'campaign101@voterdatahouse.com',
 };
 
 // Create email transporter
 const transporter = nodemailer.createTransport({
-  service: CONFIG.EMAIL_SERVICE,
+  host: CONFIG.EMAIL_HOST,
+  port: CONFIG.EMAIL_PORT,
+  secure: false, // true for 465, false for other ports
   auth: {
     user: CONFIG.EMAIL_USER,
     pass: CONFIG.EMAIL_PASS,
   },
+  tls: {
+    // Do not fail on invalid certs
+    rejectUnauthorized: false
+  }
 });
 
 // Function to format attachments for email
