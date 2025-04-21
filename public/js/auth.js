@@ -188,7 +188,7 @@ async function getCurrentUser() {
   }
 }
 
-// Function for admins to approve users
+// Function for admins to approve users - simplified to avoid Edge Functions
 async function approveUser(userId, role) {
   try {
     // Check if current user is admin
@@ -197,20 +197,8 @@ async function approveUser(userId, role) {
       throw new Error('Only administrators can approve users.');
     }
     
-    // Update the user's metadata
-    const { error: updateError } = await supabaseClient.functions.invoke('update-user-metadata', {
-      body: {
-        userId: userId,
-        metadata: { 
-          approved: true, 
-          role: role 
-        }
-      }
-    });
-    
-    if (updateError) throw updateError;
-    
-    // Also update the profiles table
+    // Since we can't use Edge Functions or directly modify auth.users,
+    // we'll just update the profiles table
     const { error: profileError } = await supabaseClient
       .from('profiles')
       .update({ 
@@ -228,7 +216,7 @@ async function approveUser(userId, role) {
   }
 }
 
-// Function to reject a user
+// Function to reject a user - simplified to avoid Edge Functions
 async function rejectUser(userId) {
   try {
     // Check if current user is admin
@@ -237,15 +225,8 @@ async function rejectUser(userId) {
       throw new Error('Only administrators can reject users.');
     }
     
-    // This would typically delete the user or mark them as rejected
-    // For Supabase, we'll delete the user from auth
-    const { error: deleteError } = await supabaseClient.functions.invoke('delete-user', {
-      body: { userId: userId }
-    });
-    
-    if (deleteError) throw deleteError;
-    
-    // Also delete from profiles table
+    // Since we can't use Edge Functions or directly delete from auth,
+    // we'll just delete from profiles table
     const { error: profileError } = await supabaseClient
       .from('profiles')
       .delete()
@@ -262,6 +243,8 @@ async function rejectUser(userId) {
 
 // Handle login form submission
 async function handleLogin() {
+  console.log('Login button clicked');
+  
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   const errorElement = document.getElementById('loginError');
@@ -299,6 +282,8 @@ async function handleLogin() {
 
 // Handle signup form submission
 async function handleSignup() {
+  console.log('Signup button clicked');
+  
   const fullName = document.getElementById('signupFullName').value;
   const email = document.getElementById('signupEmail').value;
   const password = document.getElementById('signupPassword').value;
@@ -401,7 +386,7 @@ function updateAuthUI(user) {
   }
 }
 
-// Load pending users for admin panel
+// Load pending users for admin panel - modified to handle permission issues
 async function loadPendingUsers() {
   const tableBody = document.getElementById('pendingUsersTable');
   
@@ -413,7 +398,7 @@ async function loadPendingUsers() {
   }
   
   try {
-    // Get pending users from profiles table
+    // Get pending users from profiles table only
     const { data: users, error } = await supabaseClient
       .from('profiles')
       .select('*')
@@ -424,11 +409,11 @@ async function loadPendingUsers() {
     if (users && users.length > 0) {
       let html = '';
       users.forEach(user => {
-        const createdAt = new Date(user.created_at).toLocaleString();
+        const createdAt = user.created_at ? new Date(user.created_at).toLocaleString() : 'Unknown';
         html += `
           <tr>
-            <td>${user.full_name}</td>
-            <td>${user.email}</td>
+            <td>${user.full_name || 'Unknown'}</td>
+            <td>${user.email || 'Unknown'}</td>
             <td>${createdAt}</td>
             <td>
               <div class="btn-group" role="group">
@@ -453,7 +438,7 @@ async function loadPendingUsers() {
   }
 }
 
-// Load active users for admin panel
+// Load active users for admin panel - modified to handle permission issues
 async function loadActiveUsers() {
   const tableBody = document.getElementById('activeUsersTable');
   
@@ -465,7 +450,7 @@ async function loadActiveUsers() {
   }
   
   try {
-    // Get active users from profiles table
+    // Get active users from profiles table only
     const { data: users, error } = await supabaseClient
       .from('profiles')
       .select('*')
@@ -478,8 +463,8 @@ async function loadActiveUsers() {
       users.forEach(user => {
         html += `
           <tr>
-            <td>${user.full_name}</td>
-            <td>${user.email}</td>
+            <td>${user.full_name || 'Unknown'}</td>
+            <td>${user.email || 'Unknown'}</td>
             <td>${user.role || 'member'}</td>
             <td>
               <div class="btn-group" role="group">
@@ -508,9 +493,9 @@ async function loadActiveUsers() {
 }
 
 // Helper function to approve user with specific role
-function approveUserWithRole(userId, role) {
+async function approveUserWithRole(userId, role) {
   try {
-    approveUser(userId, role);
+    await approveUser(userId, role);
     alert(`User approved with role: ${role}`);
     loadPendingUsers(); // Refresh the list
   } catch (error) {
@@ -519,10 +504,10 @@ function approveUserWithRole(userId, role) {
 }
 
 // Helper function to confirm user rejection
-function rejectUserConfirm(userId) {
+async function rejectUserConfirm(userId) {
   if (confirm('Are you sure you want to reject this user? This action cannot be undone.')) {
     try {
-      rejectUser(userId);
+      await rejectUser(userId);
       alert('User rejected successfully');
       loadPendingUsers(); // Refresh the list
     } catch (error) {
@@ -560,3 +545,8 @@ function getInitials(name) {
   // For a single name
   return name.substring(0, 2).toUpperCase();
 }
+
+// Make these functions global so they can be called from HTML
+window.approveUserWithRole = approveUserWithRole;
+window.rejectUserConfirm = rejectUserConfirm;
+window.changeUserRole = changeUserRole;
