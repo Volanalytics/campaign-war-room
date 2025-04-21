@@ -99,7 +99,7 @@ async function loadPosts() {
     
     // Fetch posts from Supabase
     if (supabaseClient) { // Make sure to use the same variable name as in your supabase-client.js
-      const { data: posts, error } = await supabase
+      const { data: posts, error } = await supabaseClient
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false });
