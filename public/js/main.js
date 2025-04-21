@@ -26,7 +26,13 @@ async function fetchPosts(category = null, sort = 'newest') {
     queryParams.append('sort', sort);
     
     try {
-        const response = await fetch(`/api/posts?${queryParams.toString()}`);
+        // Adjust the API path to match your server structure on Render.com
+        // Try one of these alternatives based on your server configuration
+        const apiBase = '/server/api'; // Option 1
+        // const apiBase = '/api'; // Option 2
+        // const apiBase = ''; // Option 3 (if API is at root)
+        
+        const response = await fetch(`${apiBase}/posts?${queryParams.toString()}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -38,12 +44,66 @@ async function fetchPosts(category = null, sort = 'newest') {
         renderPosts(data);
     } catch (error) {
         console.error('Error fetching posts:', error);
+        
+        // For development/debugging - display more information about the error
         document.getElementById('post-loading').style.display = 'none';
         document.getElementById('posts-container').innerHTML = 
-            '<div class="alert alert-danger">Error loading posts. Please try again later.</div>';
+            `<div class="alert alert-danger">
+                <p>Error loading posts. Please try again later.</p>
+                <p><strong>Error details:</strong> ${error.message}</p>
+                <p>If you're seeing a 404 error, check your server configuration and API paths.</p>
+            </div>`;
+            
+        // For demonstration during development, load sample data
+        if (error.message.includes('404')) {
+            console.log('Loading sample data for development...');
+            loadSamplePosts();
+        }
     }
 }
 
+// Function to load sample data for development/testing
+function loadSamplePosts() {
+    const samplePosts = [
+        {
+            id: 1,
+            title: "Urgent: Website Down Issue",
+            content: "The client website at client.example.com is currently down. Initial investigation shows it might be a database connection issue. Need someone to look at this immediately.\n\nError log shows: Connection refused (111)",
+            sender: "support@vpterdatahouse.com",
+            recipient: "info@vpterdatahouse.com",
+            category: "Urgent",
+            created_at: "2025-04-19T10:23:00",
+            action_type: "technical_support",
+            status: "new"
+        },
+        {
+            id: 2,
+            title: "Help spread the word: New product launch next week",
+            content: "We're launching our new data visualization tool next week and need help spreading the word on social media.\n\nHere's the announcement text to share:\n\n'Excited to announce our new DataViz Pro tool launching next Tuesday! Real-time dashboards for your most complex datasets. #DataVisualization #Analytics'",
+            sender: "marketing@vpterdatahouse.com",
+            recipient: "info@vpterdatahouse.com",
+            category: "Social Media",
+            created_at: "2025-04-18T15:45:00",
+            action_type: "social_share",
+            status: "new"
+        },
+        {
+            id: 3,
+            title: "Client Email Response Needed: Project Timeline",
+            content: "The client has asked for an updated timeline on the data migration project. Can someone from the project team draft a response outlining our current progress and expected completion dates?\n\nSpecifically they want to know:\n1. When the schema mapping will be completed\n2. Expected start date for the test migration\n3. Final migration timeline",
+            sender: "accounts@vpterdatahouse.com",
+            recipient: "info@vpterdatahouse.com",
+            category: "Email Action",
+            created_at: "2025-04-17T09:30:00",
+            action_type: "email_response",
+            status: "completed"
+        }
+    ];
+    
+    renderPosts(samplePosts);
+}
+
+// Rest of the JavaScript remains the same
 // Function to set up sidebar filters
 function setupSidebarFilters() {
     const categoryItems = document.querySelectorAll('#categories-list .sidebar-item');
@@ -338,7 +398,9 @@ function updateCategoryCounts(posts) {
 // Function to mark a post as complete
 async function markAsComplete(postId) {
     try {
-        const response = await fetch('/api/mark-complete', {
+        const apiBase = '/server/api'; // Match the same base as fetchPosts
+        
+        const response = await fetch(`${apiBase}/mark-complete`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -386,14 +448,28 @@ function assignToTeam(postId) {
 // Function to send email response (stub for now)
 function sendEmailResponse(postId) {
     const postCard = document.querySelector(`.post-card:has(button[onclick="sendEmailResponse(${postId})"])`);
-    const textarea = postCard.querySelector('textarea');
-    const response = textarea.value.trim();
-    
-    if (response) {
-        alert(`Email response submitted: ${response}`);
-        // In a real implementation, this would send the email and update the database
-        markAsComplete(postId);
+    if (!postCard) {
+        const textarea = document.querySelector(`textarea`);
+        if (textarea) {
+            const response = textarea.value.trim();
+            if (response) {
+                alert(`Email response submitted: ${response}`);
+                markAsComplete(postId);
+            } else {
+                alert('Please write a response first');
+            }
+        } else {
+            alert('Could not find the response text area.');
+        }
     } else {
-        alert('Please write a response first');
+        const textarea = postCard.querySelector('textarea');
+        const response = textarea.value.trim();
+        
+        if (response) {
+            alert(`Email response submitted: ${response}`);
+            markAsComplete(postId);
+        } else {
+            alert('Please write a response first');
+        }
     }
 }
