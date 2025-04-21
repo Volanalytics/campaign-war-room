@@ -34,4 +34,4 @@ jobs:
         EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
         EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-      run: php server/email/github-email-poller.php
+      run: php server/email/poll-email.php
