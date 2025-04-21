@@ -2,8 +2,8 @@ name: Email Polling
 
 on:
   schedule:
-    # Run every 15 minutes
-    - cron: '*/15 * * * *'
+    # Run every hour
+    - cron: '0 * * * *'
   # Allow manual triggering
   workflow_dispatch:
 
@@ -21,10 +21,10 @@ jobs:
         php-version: '8.0'
         extensions: imap, curl
         
-    - name: Install dependencies
+    - name: Verify PHP modules
       run: |
-        # If you have composer dependencies
-        # composer install --no-interaction --no-progress
+        php -m | grep imap
+        php -v
     
     - name: Run email polling script
       env:
@@ -34,4 +34,12 @@ jobs:
         EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
         EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-      run: php server/email/poll-email.php
+      run: php server/email/github-email-poller.php
+      
+    - name: Upload logs
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: email-polling-logs
+        path: server/email/github-poll-email.log
+        retention-days: 5
