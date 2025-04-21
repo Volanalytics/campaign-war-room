@@ -368,8 +368,12 @@ async function addComment(postId, button) {
     console.error('Error getting user info:', error);
   }
   
-  // Create comment object without ID field (let the database generate it)
+  // Generate a smaller ID that will fit in an integer column
+  const newId = Math.floor(Math.random() * 1000000);
+  
+  // Create comment object with ID
   const newComment = {
+    id: newId,
     post_id: postId,
     user_id: userId,
     content: commentText,
@@ -384,8 +388,25 @@ async function addComment(postId, button) {
     
     console.log('Comment saved to database:', data);
     
-    // Reload comments
-    await loadCommentsForPost(postId, commentSection);
+    // Reload comments - safely check if function exists
+    if (typeof loadCommentsForPost === 'function') {
+      await loadCommentsForPost(postId, button);
+    } else {
+      // Manual reload as fallback
+      const commentsSection = button.closest('.comments-section');
+      const { data: comments, error: loadError } = await supabaseClient
+        .from('comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+        
+      if (!loadError && commentsSection) {
+        const commentsList = commentsSection.querySelector('.comments-list');
+        if (commentsList && typeof renderComments === 'function') {
+          commentsList.innerHTML = renderComments(comments || []);
+        }
+      }
+    }
     
     // Clear the input
     commentInput.value = '';
@@ -397,12 +418,14 @@ async function addComment(postId, button) {
     const post = campaignPosts.find(p => p.id === postId);
     if (post) {
       if (!post.comments) post.comments = [];
-      post.comments.push({...newComment, id: `local-${Date.now()}`});
+      post.comments.push(newComment);
       
       // Update the comments section
       const commentsSection = button.closest('.comments-section');
       const commentsList = commentsSection.querySelector('.comments-list');
-      commentsList.innerHTML = renderComments(post.comments);
+      if (commentsList && typeof renderComments === 'function') {
+        commentsList.innerHTML = renderComments(post.comments);
+      }
       
       // Clear the input
       commentInput.value = '';
@@ -448,6 +471,50 @@ function filterPostsByCategory(category) {
     });
 }
 
+// Function to load comments for a specific post
+async function loadCommentsForPost(postId, element) {
+  try {
+    // Try to get comments from database
+    const { data: comments, error } = await supabaseClient
+      .from('comments')
+      .select('*')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    
+    // Find the comments section and update it
+    let commentsSection;
+    if (element.classList && element.classList.contains('comments-section')) {
+      commentsSection = element;
+    } else {
+      commentsSection = element.closest('.comments-section');
+    }
+    
+    const commentsList = commentsSection.querySelector('.comments-list');
+    if (commentsList) {
+      commentsList.innerHTML = renderComments(comments || []);
+    }
+  } catch (error) {
+    console.error('Error loading comments:', error);
+    
+    // Fallback to local storage
+    const post = campaignPosts.find(p => p.id === postId);
+    if (post && post.comments) {
+      let commentsSection;
+      if (element.classList && element.classList.contains('comments-section')) {
+        commentsSection = element;
+      } else {
+        commentsSection = element.closest('.comments-section');
+      }
+      
+      const commentsList = commentsSection.querySelector('.comments-list');
+      if (commentsList) {
+        commentsList.innerHTML = renderComments(post.comments);
+      }
+    }
+  }
+}
 // Function to sort posts
 function sortPosts(sortOption) {
     const postsContainer = document.getElementById('posts-container');
