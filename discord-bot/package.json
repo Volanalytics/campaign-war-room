@@ -1,9 +1,21 @@
-# Discord Bot Configuration
-DISCORD_BOT_TOKEN=your_discord_bot_token_here
-MONITORED_CHANNELS=channel_id_1,channel_id_2
-
-# Email Configuration
-EMAIL_SERVICE=gmail
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASS=your_app_password_here
-TARGET_EMAIL=info@vpterdatahouse.com
+{
+  "name": "voterdatahouse-discord-forwarder",
+  "version": "1.0.0",
+  "description": "Discord bot that forwards channel messages to campaign101@voterdatahouse.com",
+  "main": "discord-bot.js",
+  "scripts": {
+    "start": "node discord-bot.js",
+    "dev": "nodemon discord-bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "nodemailer": "^6.9.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
