@@ -358,26 +358,22 @@ async function addComment(postId, button) {
   
   // Get current user info
   let userId = 'anonymous';
-  let userName = 'Guest';
   
   try {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (user) {
-      userId = user.id;
-      userName = user.user_metadata?.full_name || user.email;
+      userId = user.email || user.id;
     }
   } catch (error) {
     console.error('Error getting user info:', error);
   }
   
-  // Create comment object
+  // Create comment object without ID field (let the database generate it)
   const newComment = {
-    id: Date.now(),
     post_id: postId,
     user_id: userId,
     content: commentText,
-    created_at: new Date().toISOString(),
-    user_name: userName // Add user's name to display correctly
+    created_at: new Date().toISOString()
   };
   
   try {
@@ -388,8 +384,8 @@ async function addComment(postId, button) {
     
     console.log('Comment saved to database:', data);
     
-    // Reload comments to show the new one
-    await loadCommentsForPost(postId, button);
+    // Reload comments
+    await loadCommentsForPost(postId, commentSection);
     
     // Clear the input
     commentInput.value = '';
@@ -401,7 +397,7 @@ async function addComment(postId, button) {
     const post = campaignPosts.find(p => p.id === postId);
     if (post) {
       if (!post.comments) post.comments = [];
-      post.comments.push(newComment);
+      post.comments.push({...newComment, id: `local-${Date.now()}`});
       
       // Update the comments section
       const commentsSection = button.closest('.comments-section');
@@ -410,35 +406,6 @@ async function addComment(postId, button) {
       
       // Clear the input
       commentInput.value = '';
-    }
-  }
-}
-
-// Function to load comments for a specific post
-async function loadCommentsForPost(postId, element) {
-  try {
-    // Try to get comments from database
-    const { data: comments, error } = await supabaseClient
-      .from('comments')
-      .select('*')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-    
-    if (error) throw error;
-    
-    // Find the comments section and update it
-    const commentsSection = element.closest('.comments-section');
-    const commentsList = commentsSection.querySelector('.comments-list');
-    commentsList.innerHTML = renderComments(comments || []);
-  } catch (error) {
-    console.error('Error loading comments:', error);
-    
-    // Fallback to local storage
-    const post = campaignPosts.find(p => p.id === postId);
-    if (post && post.comments) {
-      const commentsSection = element.closest('.comments-section');
-      const commentsList = commentsSection.querySelector('.comments-list');
-      commentsList.innerHTML = renderComments(post.comments);
     }
   }
 }
