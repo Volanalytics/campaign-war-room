@@ -98,7 +98,7 @@ async function loadPosts() {
     console.log('Fetching posts from Supabase...');
     
     // Fetch posts from Supabase
-    if (supabase) { // Make sure to use the same variable name as in your supabase-client.js
+    if (supabaseClient) { // Make sure to use the same variable name as in your supabase-client.js
       const { data: posts, error } = await supabase
         .from('posts')
         .select('*')
