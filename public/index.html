@@ -198,6 +198,53 @@
             max-width: 90%;
             width: 400px;
         }
+        
+        /* User Management Modal specific styles */
+        #userManagementModal .modal-dialog {
+            max-width: 900px;
+            width: 95%;
+            margin: 1.75rem auto;
+        }
+
+        #userManagementModal .table-responsive {
+            min-height: 300px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        #userManagementModal .table th {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            z-index: 10;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        #userManagementModal .table td {
+            vertical-align: middle;
+        }
+
+        #userManagementModal .table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        #userManagementModal .dropdown-toggle {
+            min-width: 90px;
+        }
+
+        #userManagementModal .btn-sm {
+            margin-right: 0.25rem;
+        }
+
+        #userManagementModal .badge {
+            font-weight: 500;
+            padding: 0.4em 0.6em;
+        }
+        
+        #userManagementModal .filtered {
+            display: none;
+        }
 </style>
 </head>
 <body>
@@ -505,26 +552,40 @@
 
     <!-- User Management Panel (Admin Only) -->
     <div class="modal fade" id="userManagementModal" tabindex="-1" aria-labelledby="userManagementModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="userManagementModalLabel">User Management</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <!-- Search bar -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="userSearchInput" placeholder="Search users by name or email...">
+                        </div>
+                    </div>
+                    
+                    <!-- Tabs with user counts -->
                     <ul class="nav nav-tabs" id="userTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab">Pending Approval</button>
+                            <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab">
+                                Pending Approval <span class="badge bg-danger ms-1">0</span>
+                            </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab">Active Users</button>
+                            <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab">
+                                Active Users <span class="badge bg-secondary ms-1">0</span>
+                            </button>
                         </li>
                     </ul>
+                    
                     <div class="tab-content mt-3">
-                        <div class="tab-pane fade show active" id="pending" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
+                        <div class="tab-pane fade" id="pending" role="tabpanel">
+                            <div class="table-responsive" style="min-height: 300px; max-height: 60vh; overflow-y: auto;">
+                                <table class="table table-hover">
+                                    <thead class="position-sticky top-0 bg-white">
                                         <tr>
                                             <th>Name</th>
                                             <th>Email</th>
@@ -533,18 +594,34 @@
                                         </tr>
                                     </thead>
                                     <tbody id="pendingUsersTable">
-                                        <!-- Pending users will be loaded here -->
+                                        <!-- Sample data, will be replaced with real data -->
                                         <tr>
-                                            <td colspan="4" class="text-center">Loading pending users...</td>
+                                            <td>Sarah Johnson</td>
+                                            <td>sjohnson@example.com</td>
+                                            <td class="text-muted small timestamp">2025-04-20</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-success">Approve</button>
+                                                <button class="btn btn-sm btn-outline-secondary">Reject</button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Michael Chen</td>
+                                            <td>mchen@example.com</td>
+                                            <td class="text-muted small timestamp">2025-04-21</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-success">Approve</button>
+                                                <button class="btn btn-sm btn-outline-secondary">Reject</button>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-                        <div class="tab-pane fade" id="active" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
+                        
+                        <div class="tab-pane fade show active" id="active" role="tabpanel">
+                            <div class="table-responsive" style="min-height: 300px; max-height: 60vh; overflow-y: auto;">
+                                <table class="table table-hover">
+                                    <thead class="position-sticky top-0 bg-white">
                                         <tr>
                                             <th>Name</th>
                                             <th>Email</th>
@@ -553,15 +630,70 @@
                                         </tr>
                                     </thead>
                                     <tbody id="activeUsersTable">
-                                        <!-- Active users will be loaded here -->
+                                        <!-- Sample data, will be replaced with real data -->
                                         <tr>
-                                            <td colspan="4" class="text-center">Loading active users...</td>
+                                            <td>Brian Moran</td>
+                                            <td>bpmoran@protonmail.com</td>
+                                            <td><span class="badge bg-danger">Admin</span></td>
+                                            <td>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        Actions
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                        <li><a class="dropdown-item" href="#">Make Admin</a></li>
+                                                        <li><a class="dropdown-item" href="#">Make User</a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><a class="dropdown-item text-danger" href="#">Deactivate</a></li>
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Jessica Williams</td>
+                                            <td>jwilliams@example.com</td>
+                                            <td><span class="badge bg-primary">User</span></td>
+                                            <td>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        Actions
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                        <li><a class="dropdown-item" href="#">Make Admin</a></li>
+                                                        <li><a class="dropdown-item" href="#">Make User</a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><a class="dropdown-item text-danger" href="#">Deactivate</a></li>
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Raj Patel</td>
+                                            <td>rpatel@example.com</td>
+                                            <td><span class="badge bg-primary">User</span></td>
+                                            <td>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        Actions
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                        <li><a class="dropdown-item" href="#">Make Admin</a></li>
+                                                        <li><a class="dropdown-item" href="#">Make User</a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><a class="dropdown-item text-danger" href="#">Deactivate</a></li>
+                                                    </ul>
+                                                </div>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary">Add New User</button>
                 </div>
             </div>
         </div>
@@ -573,5 +705,240 @@
     <script src="/js/supabase-client.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/main.js"></script>
+    
+    <!-- User management and timestamp conversion script -->
+    <script>
+    // User Management Modal functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize user management features when the modal is shown
+        const userManagementModal = document.getElementById('userManagementModal');
+        if (userManagementModal) {
+            userManagementModal.addEventListener('shown.bs.modal', function() {
+                // Update category counts
+                updateUserCounts();
+                
+                // Convert timestamps to local time
+                convertTimestampsToLocal();
+            });
+            
+            // Search functionality
+            const searchInput = document.getElementById('userSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    filterUsers(this.value);
+                });
+            }
+        }
+        
+        // User tab click handling
+        const userTabs = document.querySelectorAll('#userManagementModal .nav-link');
+        userTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                setTimeout(updateUserCounts, 100); // Update counts after tab switch
+            });
+        });
+        
+        // Action button handlers
+        setupUserActionHandlers();
+    });
+
+    // Function to update user counts in tabs
+    function updateUserCounts() {
+        // Count users in active tab
+        const activeUsersCount = document.querySelectorAll('#activeUsersTable tr:not(.filtered)').length;
+        
+        // Count users in pending tab
+        const pendingUsersCount = document.querySelectorAll('#pendingUsersTable tr:not(.filtered)').length;
+        
+        // Update tab labels with counts
+        const pendingTab = document.getElementById('pending-tab');
+        const activeTab = document.getElementById('active-tab');
+        
+        if (pendingTab) {
+            const pendingBadge = pendingTab.querySelector('.badge') || document.createElement('span');
+            pendingBadge.className = 'badge bg-danger ms-1';
+            pendingBadge.textContent = pendingUsersCount;
+            
+            if (!pendingTab.querySelector('.badge')) {
+                pendingTab.innerHTML = 'Pending Approval ';
+                pendingTab.appendChild(pendingBadge);
+            }
+        }
+        
+        if (activeTab) {
+            const activeBadge = activeTab.querySelector('.badge') || document.createElement('span');
+            activeBadge.className = 'badge bg-secondary ms-1';
+            activeBadge.textContent = activeUsersCount;
+            
+            if (!activeTab.querySelector('.badge')) {
+                activeTab.innerHTML = 'Active Users ';
+                activeTab.appendChild(activeBadge);
+            }
+        }
+    }
+
+    // Function to filter users based on search term
+    function filterUsers(searchTerm) {
+        searchTerm = searchTerm.toLowerCase();
+        
+        // Filter active users
+        const activeUsers = document.querySelectorAll('#activeUsersTable tr');
+        let activeVisible = 0;
+        
+        activeUsers.forEach(row => {
+            if (!row.querySelector('td')) return; // Skip header row
+            
+            const name = row.cells[0].textContent.toLowerCase();
+            const email = row.cells[1].textContent.toLowerCase();
+            
+            if (name.includes(searchTerm) || email.includes(searchTerm)) {
+                row.classList.remove('filtered', 'd-none');
+                activeVisible++;
+            } else {
+                row.classList.add('filtered', 'd-none');
+            }
+        });
+        
+        // Filter pending users
+        const pendingUsers = document.querySelectorAll('#pendingUsersTable tr');
+        let pendingVisible = 0;
+        
+        pendingUsers.forEach(row => {
+            if (!row.querySelector('td')) return; // Skip header row
+            
+            const name = row.cells[0].textContent.toLowerCase();
+            const email = row.cells[1].textContent.toLowerCase();
+            
+            if (name.includes(searchTerm) || email.includes(searchTerm)) {
+                row.classList.remove('filtered', 'd-none');
+                pendingVisible++;
+            } else {
+                row.classList.add('filtered', 'd-none');
+            }
+        });
+        
+        // Update counts
+        updateUserCounts();
+        
+        // Show "no results" message if needed
+        showNoResultsMessage('#activeUsersTable', activeVisible === 0);
+        showNoResultsMessage('#pendingUsersTable', pendingVisible === 0);
+    }
+
+    // Function to show/hide "no results" message
+    function showNoResultsMessage(tableSelector, show) {
+        const table = document.querySelector(tableSelector);
+        if (!table) return;
+        
+        let noResultsRow = table.querySelector('.no-results');
+        
+        if (show) {
+            if (!noResultsRow) {
+                noResultsRow = document.createElement('tr');
+                noResultsRow.className = 'no-results';
+                noResultsRow.innerHTML = '<td colspan="4" class="text-center py-3">No users match your search</td>';
+                table.appendChild(noResultsRow);
+            }
+        } else if (noResultsRow) {
+            noResultsRow.remove();
+        }
+    }
+
+    // Function to convert timestamps to local time
+    function convertTimestampsToLocal() {
+        // Find all timestamp elements
+        const timestamps = document.querySelectorAll('.timestamp:not(.converted)');
+        
+        timestamps.forEach(element => {
+            const dateString = element.textContent.trim();
+            
+            // Skip if it's already formatted
+            if (dateString.includes('Today') || dateString.includes('Yesterday')) {
+                return;
+            }
+            
+            try {
+                const date = new Date(dateString);
+                
+                // Format the date based on how recent it is
+                const now = new Date();
+                const diffTime = Math.abs(now - date);
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                
+                let formattedDate;
+                
+                if (diffDays === 0) {
+                    // Today
+                    const hours = date.getHours().toString().padStart(2, '0');
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    formattedDate = `Today at ${hours}:${minutes}`;
+                } else if (diffDays === 1) {
+                    // Yesterday
+                    formattedDate = 'Yesterday';
+                } else if (diffDays < 7) {
+                    // Within a week
+                    formattedDate = date.toLocaleString('en-us', { weekday: 'long' });
+                } else {
+                    // Older
+                    formattedDate = date.toLocaleDateString();
+                }
+                
+                element.textContent = formattedDate;
+                element.classList.add('converted');
+            } catch (e) {
+                console.error('Error converting date', e);
+            }
+        });
+    }
+
+    // Function to setup action button handlers
+    function setupUserActionHandlers() {
+        // Action dropdown menu handlers
+        document.addEventListener('click', function(event) {
+            if (event.target.matches('#userManagementModal .dropdown-item')) {
+                event.preventDefault();
+                const action = event.target.textContent.trim();
+                const row = event.target.closest('tr');
+                const userName = row.cells[0].textContent;
+                
+                // Show confirmation or perform action
+                alert(`Action: ${action} for user: ${userName}`);
+            }
+        });
+        
+        // Approve button handlers
+        document.addEventListener('click', function(event) {
+            if (event.target.matches('#userManagementModal .btn-success')) {
+                const row = event.target.closest('tr');
+                const userName = row.cells[0].textContent;
+                alert(`User approved: ${userName}`);
+            }
+        });
+        
+        // Reject button handlers
+        document.addEventListener('click', function(event) {
+            if (event.target.matches('#userManagementModal .btn-outline-secondary:not(.dropdown-toggle)')) {
+                const row = event.target.closest('tr');
+                const userName = row.cells[0].textContent;
+                alert(`User rejected: ${userName}`);
+            }
+        });
+    }
+
+    // Call these functions when posts are loaded to fix their timestamps too
+    document.addEventListener('DOMContentLoaded', function() {
+        // If you have other post loading functionality, call this after posts are loaded
+        const postsContainer = document.getElementById('posts-container');
+        if (postsContainer) {
+            // Observer to watch for changes to the posts container
+            const observer = new MutationObserver(function(mutations) {
+                convertTimestampsToLocal();
+            });
+            
+            // Start observing posts container for changes
+            observer.observe(postsContainer, { childList: true, subtree: true });
+        }
+    });
+    </script>
 </body>
 </html>
