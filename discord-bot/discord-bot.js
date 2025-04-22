@@ -116,7 +116,7 @@ client.on(Events.MessageCreate, message => {
     
     // Check if bot has reaction permissions
     const permissions = message.channel.permissionsFor(client.user);
-    if (permissions && permissions.has('ADD_REACTIONS')) {
+    if (permissions && permissions.has('AddReactions')) {
       console.log('[DEBUG] Bot has permission to add reactions');
     } else {
       console.log('[DEBUG] Bot does NOT have permission to add reactions');
