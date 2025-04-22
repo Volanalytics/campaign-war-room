@@ -1,552 +1,769 @@
-// Authentication functions for Campaign Action Hub
-
-// Check if user is already logged in on page load
+// auth.js - Authentication handling for Campaign Action Hub
 document.addEventListener('DOMContentLoaded', function() {
-  // Check authentication state
-  checkAuthState();
-  
-  // Set up event listeners for auth forms
-  setupAuthEventListeners();
+    console.log('Auth system initializing...');
+    
+    // Set up password strength meter
+    setupPasswordStrength();
+    
+    // Set up login form handler
+    setupLoginForm();
+    
+    // Set up signup form handler
+    setupSignupForm();
+    
+    // Set up logout button handler
+    setupLogoutButton();
+    
+    // Check authentication status
+    checkAuth();
+    
+    // Set up user management functionality for admins
+    setupUserManagement();
 });
 
-// Set up event listeners for authentication forms
-function setupAuthEventListeners() {
-  // Login button
-  const loginButton = document.getElementById('loginButton');
-  if (loginButton) {
-    loginButton.addEventListener('click', handleLogin);
-  }
-  
-  // Signup button
-  const signupButton = document.getElementById('signupButton');
-  if (signupButton) {
-    signupButton.addEventListener('click', handleSignup);
-  }
-  
-  // Logout button
-  const logoutButton = document.getElementById('logoutButton');
-  if (logoutButton) {
-    logoutButton.addEventListener('click', handleLogout);
-  }
-  
-  // User management tab buttons
-  const pendingTab = document.getElementById('pending-tab');
-  if (pendingTab) {
-    pendingTab.addEventListener('click', loadPendingUsers);
-  }
-  
-  const activeTab = document.getElementById('active-tab');
-  if (activeTab) {
-    activeTab.addEventListener('click', loadActiveUsers);
-  }
-
-  // Add listeners to enter key in forms
-  const loginForm = document.getElementById('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleLogin();
-      }
-    });
-  }
-
-  const signupForm = document.getElementById('signupForm');
-  if (signupForm) {
-    signupForm.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleSignup();
-      }
-    });
-  }
-}
-
-// Function to check authentication state
-async function checkAuthState() {
-  try {
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
+// Function to set up password strength meter
+function setupPasswordStrength() {
+    const passwordInput = document.getElementById('signupPassword');
+    const passwordStrength = document.getElementById('passwordStrength');
+    const passwordFeedback = document.getElementById('passwordFeedback');
     
-    if (error) {
-      console.error('Error checking auth state:', error);
-      return;
+    if (passwordInput && passwordStrength && passwordFeedback) {
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            const strength = getPasswordStrength(password);
+            
+            passwordStrength.className = 'password-strength';
+            
+            if (password.length === 0) {
+                passwordStrength.style.width = '0';
+                passwordFeedback.textContent = 'Password must be at least 8 characters long';
+            } else if (strength === 'weak') {
+                passwordStrength.classList.add('weak');
+                passwordFeedback.textContent = 'Weak: Add numbers and special characters';
+            } else if (strength === 'medium') {
+                passwordStrength.classList.add('medium');
+                passwordFeedback.textContent = 'Medium: Try adding special characters';
+            } else {
+                passwordStrength.classList.add('strong');
+                passwordFeedback.textContent = 'Strong password';
+            }
+        });
     }
+}
+
+// Function to set up login form handler
+function setupLoginForm() {
+    const loginButton = document.getElementById('loginButton');
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
     
-    if (session) {
-      // User is logged in
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      
-      // Check if user is approved
-      if (user.user_metadata && user.user_metadata.approved) {
-        console.log('User is logged in and approved:', user);
-        updateAuthUI(user);
-      } else {
-        console.log('User is logged in but not approved');
-        // Log them out if not approved
-        await supabaseClient.auth.signOut();
-        updateAuthUI(null);
-        alert('Your account is pending approval by an administrator.');
-      }
-    } else {
-      // User is not logged in
-      console.log('User is not logged in');
-      updateAuthUI(null);
+    if (loginButton && loginForm) {
+        loginButton.addEventListener('click', async function() {
+            // Hide any previous errors
+            if (loginError) {
+                loginError.classList.add('d-none');
+            }
+            
+            // Get form values
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            // Basic validation
+            if (!email || !password) {
+                if (loginError) {
+                    loginError.textContent = 'Please enter your email and password';
+                    loginError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            // Disable button during login
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...';
+            
+            try {
+                // Attempt to sign in
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                console.log('User logged in successfully:', data.user);
+                
+                // Close modal
+                const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+                if (loginModal) {
+                    loginModal.hide();
+                }
+                
+                // Update UI for logged in state
+                updateAuthUI(true);
+                
+                // Check if user is approved
+                await checkUserApproval(data.user.id);
+                
+                // Show success toast
+                showToast('Success', 'Logged in successfully');
+                
+                // Refresh posts to show authenticated content
+                if (typeof fetchPosts === 'function') {
+                    fetchPosts();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                
+                if (loginError) {
+                    loginError.textContent = error.message || 'Invalid email or password. Please try again.';
+                    loginError.classList.remove('d-none');
+                }
+                
+                // Reset button
+                loginButton.disabled = false;
+                loginButton.innerHTML = 'Log In';
+            }
+        });
     }
-  } catch (error) {
-    console.error('Error in checkAuthState:', error);
-    updateAuthUI(null);
-  }
 }
 
-// Function to sign up a new user
-async function signUp(email, password, fullName) {
-  try {
-    // Register user with Supabase auth
-    const { data, error } = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          role: 'pending', // Default role is pending until approved
-          approved: false
-        }
-      }
-    });
+// Function to set up signup form handler
+function setupSignupForm() {
+    const signupButton = document.getElementById('signupButton');
+    const signupForm = document.getElementById('signupForm');
+    const signupError = document.getElementById('signupError');
     
-    if (error) throw error;
-    
-    // Also add to profiles table for easier querying
-    const { error: profileError } = await supabaseClient
-      .from('profiles')
-      .insert([
-        { 
-          id: data.user.id,
-          email: email,
-          full_name: fullName,
-          role: 'pending',
-          approved: false
-        }
-      ]);
-    
-    if (profileError) {
-      console.error('Error creating profile:', profileError);
-      // Continue anyway as the auth user was created
+    if (signupButton && signupForm) {
+        signupButton.addEventListener('click', async function() {
+            // Hide any previous errors
+            if (signupError) {
+                signupError.classList.add('d-none');
+            }
+            
+            // Get form values
+            const fullName = document.getElementById('signupFullName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+            
+            // Basic validation
+            if (!fullName || !email || !password || !passwordConfirm) {
+                if (signupError) {
+                    signupError.textContent = 'Please fill in all fields';
+                    signupError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            if (password !== passwordConfirm) {
+                if (signupError) {
+                    signupError.textContent = 'Passwords do not match';
+                    signupError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            if (getPasswordStrength(password) === 'weak') {
+                if (signupError) {
+                    signupError.textContent = 'Please choose a stronger password';
+                    signupError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            // Disable button during signup
+            signupButton.disabled = true;
+            signupButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating account...';
+            
+            try {
+                // Attempt to sign up
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            full_name: fullName
+                        }
+                    }
+                });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                console.log('User signed up successfully:', data.user);
+                
+                // Create profile entry
+                if (data.user) {
+                    try {
+                        const { error: profileError } = await supabaseClient
+                            .from('profiles')
+                            .insert([
+                                { 
+                                    id: data.user.id,
+                                    full_name: fullName,
+                                    email: email,
+                                    role: 'user',
+                                    approved: false // Requires admin approval
+                                }
+                            ]);
+                        
+                        if (profileError) {
+                            console.error('Profile creation error:', profileError);
+                            // Continue anyway since the auth account was created
+                        }
+                    } catch (profileError) {
+                        console.error('Profile creation error:', profileError);
+                        // Continue anyway since the auth account was created
+                    }
+                }
+                
+                // Close signup modal
+                const signupModal = bootstrap.Modal.getInstance(document.getElementById('signupModal'));
+                if (signupModal) {
+                    signupModal.hide();
+                }
+                
+                // Show success message
+                showToast('Success', 'Account created successfully! Please check your email to verify your account.');
+                
+                // Reset button
+                signupButton.disabled = false;
+                signupButton.innerHTML = 'Create Account';
+                
+                // Open login modal
+                setTimeout(() => {
+                    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                }, 1000);
+            } catch (error) {
+                console.error('Signup error:', error);
+                
+                if (signupError) {
+                    signupError.textContent = error.message || 'Error creating account. Please try again.';
+                    signupError.classList.remove('d-none');
+                }
+                
+                // Reset button
+                signupButton.disabled = false;
+                signupButton.innerHTML = 'Create Account';
+            }
+        });
     }
-    
-    return data.user;
-  } catch (error) {
-    console.error('Error signing up:', error);
-    throw error;
-  }
 }
 
-// Function to log in
-async function logIn(email, password) {
-  try {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+// Function to set up logout button handler
+function setupLogoutButton() {
+    const logoutButton = document.getElementById('logoutButton');
     
-    if (error) throw error;
-    
-    // Check if user is approved
-    if (data.user.user_metadata && !data.user.user_metadata.approved) {
-      await supabaseClient.auth.signOut();
-      throw new Error('Your account is pending approval. Please check back later.');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async function() {
+            try {
+                await supabaseClient.auth.signOut();
+                
+                // Update UI for logged out state
+                updateAuthUI(false);
+                
+                // Show success toast
+                showToast('Success', 'Logged out successfully');
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Error', 'Error logging out. Please try again.');
+            }
+        });
     }
-    
-    return data.user;
-  } catch (error) {
-    console.error('Error logging in:', error);
-    throw error;
-  }
 }
 
-// Function to log out
-async function logOut() {
-  try {
-    const { error } = await supabaseClient.auth.signOut();
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error('Error logging out:', error);
-    return false;
-  }
-}
-
-// Function to get current user
-async function getCurrentUser() {
-  try {
-    const { data: { user }, error } = await supabaseClient.auth.getUser();
-    if (error) throw error;
-    return user;
-  } catch (error) {
-    console.error('Error getting current user:', error);
-    return null;
-  }
-}
-
-// Function for admins to approve users - simplified to avoid Edge Functions
-async function approveUser(userId, role) {
-  try {
-    // Check if current user is admin
-    const currentUser = await getCurrentUser();
-    if (!currentUser || !currentUser.user_metadata || currentUser.user_metadata.role !== 'admin') {
-      throw new Error('Only administrators can approve users.');
-    }
-    
-    // Since we can't use Edge Functions or directly modify auth.users,
-    // we'll just update the profiles table
-    const { error: profileError } = await supabaseClient
-      .from('profiles')
-      .update({ 
-        approved: true, 
-        role: role 
-      })
-      .eq('id', userId);
-    
-    if (profileError) throw profileError;
-    
-    return true;
-  } catch (error) {
-    console.error('Error approving user:', error);
-    throw error;
-  }
-}
-
-// Function to reject a user - simplified to avoid Edge Functions
-async function rejectUser(userId) {
-  try {
-    // Check if current user is admin
-    const currentUser = await getCurrentUser();
-    if (!currentUser || !currentUser.user_metadata || currentUser.user_metadata.role !== 'admin') {
-      throw new Error('Only administrators can reject users.');
-    }
-    
-    // Since we can't use Edge Functions or directly delete from auth,
-    // we'll just delete from profiles table
-    const { error: profileError } = await supabaseClient
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
-    
-    if (profileError) throw profileError;
-    
-    return true;
-  } catch (error) {
-    console.error('Error rejecting user:', error);
-    throw error;
-  }
-}
-
-// Handle login form submission
-async function handleLogin() {
-  console.log('Login button clicked');
-  
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
-  const errorElement = document.getElementById('loginError');
-  
-  errorElement.classList.add('d-none');
-  
-  if (!email || !password) {
-    errorElement.textContent = 'Please enter both email and password.';
-    errorElement.classList.remove('d-none');
-    return;
-  }
-  
-  try {
-    const user = await logIn(email, password);
-    if (user) {
-      // Close modal
-      const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
-      if (loginModal) {
-        loginModal.hide();
-      }
-      
-      // Update UI for logged in state
-      updateAuthUI(user);
-      
-      // Refresh content
-      if (typeof loadPosts === 'function') {
-        loadPosts();
-      }
-    }
-  } catch (error) {
-    errorElement.textContent = error.message || 'Login failed. Please try again.';
-    errorElement.classList.remove('d-none');
-  }
-}
-
-// Handle signup form submission
-async function handleSignup() {
-  console.log('Signup button clicked');
-  
-  const fullName = document.getElementById('signupFullName').value;
-  const email = document.getElementById('signupEmail').value;
-  const password = document.getElementById('signupPassword').value;
-  const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
-  const errorElement = document.getElementById('signupError');
-  
-  errorElement.classList.add('d-none');
-  
-  // Validate form
-  if (!fullName || !email || !password || !passwordConfirm) {
-    errorElement.textContent = 'Please fill out all fields.';
-    errorElement.classList.remove('d-none');
-    return;
-  }
-  
-  if (password !== passwordConfirm) {
-    errorElement.textContent = 'Passwords do not match.';
-    errorElement.classList.remove('d-none');
-    return;
-  }
-  
-  if (password.length < 8) {
-    errorElement.textContent = 'Password must be at least 8 characters long.';
-    errorElement.classList.remove('d-none');
-    return;
-  }
-  
-  try {
-    const user = await signUp(email, password, fullName);
-    if (user) {
-      // Close signup modal
-      const signupModal = bootstrap.Modal.getInstance(document.getElementById('signupModal'));
-      if (signupModal) {
-        signupModal.hide();
-      }
-      
-      // Show success message
-      alert('Account created successfully! An administrator will approve your account soon.');
-      
-      // Switch to login modal
-      const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-      loginModal.show();
-    }
-  } catch (error) {
-    errorElement.textContent = error.message || 'Signup failed. Please try again.';
-    errorElement.classList.remove('d-none');
-  }
-}
-
-// Handle logout
-async function handleLogout() {
-  const success = await logOut();
-  if (success) {
-    updateAuthUI(null);
-    if (typeof loadPosts === 'function') {
-      loadPosts(); // Refresh content with public access
-    }
-  } else {
-    alert('Error logging out. Please try again.');
-  }
-}
-
-// Update UI based on authentication state
-function updateAuthUI(user) {
-  const loggedOutMenu = document.getElementById('loggedOutMenu');
-  const loggedInMenu = document.getElementById('loggedInMenu');
-  const userDisplayName = document.getElementById('userDisplayName');
-  const userRole = document.getElementById('userRole');
-  const adminOnlyElements = document.querySelectorAll('.admin-only');
-  const userAvatar = document.querySelector('#loggedInMenu .user-avatar');
-  
-  if (user) {
-    // User is logged in
-    loggedOutMenu.classList.add('d-none');
-    loggedInMenu.classList.remove('d-none');
-    
-    // Set user display name and initials
-    const displayName = user.user_metadata?.full_name || user.email;
-    userDisplayName.textContent = displayName;
-    
-    if (userAvatar) {
-      userAvatar.textContent = getInitials(displayName);
-    }
-    
-    // Set user role
-    const role = user.user_metadata?.role || 'Member';
-    userRole.textContent = `Role: ${role.charAt(0).toUpperCase() + role.slice(1)}`;
-    
-    // Show admin features if applicable
-    if (role === 'admin') {
-      adminOnlyElements.forEach(el => el.classList.remove('d-none'));
-    } else {
-      adminOnlyElements.forEach(el => el.classList.add('d-none'));
-    }
-  } else {
-    // User is logged out
-    loggedOutMenu.classList.remove('d-none');
-    loggedInMenu.classList.add('d-none');
-    adminOnlyElements.forEach(el => el.classList.add('d-none'));
-  }
-}
-
-// Load pending users for admin panel - modified to handle permission issues
-async function loadPendingUsers() {
-  const tableBody = document.getElementById('pendingUsersTable');
-  
-  // Only proceed if user is admin
-  const currentUser = await getCurrentUser();
-  if (!currentUser || currentUser.user_metadata?.role !== 'admin') {
-    tableBody.innerHTML = '<tr><td colspan="4" class="text-center">Access denied. Admin privileges required.</td></tr>';
-    return;
-  }
-  
-  try {
-    // Get pending users from profiles table only
-    const { data: users, error } = await supabaseClient
-      .from('profiles')
-      .select('*')
-      .eq('approved', false);
-      
-    if (error) throw error;
-    
-    if (users && users.length > 0) {
-      let html = '';
-      users.forEach(user => {
-        const createdAt = user.created_at ? new Date(user.created_at).toLocaleString() : 'Unknown';
-        html += `
-          <tr>
-            <td>${user.full_name || 'Unknown'}</td>
-            <td>${user.email || 'Unknown'}</td>
-            <td>${createdAt}</td>
-            <td>
-              <div class="btn-group" role="group">
-                <button type="button" class="btn btn-sm btn-success" onclick="approveUserWithRole('${user.id}', 'member')">
-                  <i class="bi bi-check-lg"></i> Approve
-                </button>
-                <button type="button" class="btn btn-sm btn-danger" onclick="rejectUserConfirm('${user.id}')">
-                  <i class="bi bi-x-lg"></i> Reject
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-      tableBody.innerHTML = html;
-    } else {
-      tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No pending users found.</td></tr>';
-    }
-  } catch (error) {
-    console.error('Error loading pending users:', error);
-    tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error loading users: ${error.message}</td></tr>`;
-  }
-}
-
-// Load active users for admin panel - modified to handle permission issues
-async function loadActiveUsers() {
-  const tableBody = document.getElementById('activeUsersTable');
-  
-  // Only proceed if user is admin
-  const currentUser = await getCurrentUser();
-  if (!currentUser || currentUser.user_metadata?.role !== 'admin') {
-    tableBody.innerHTML = '<tr><td colspan="4" class="text-center">Access denied. Admin privileges required.</td></tr>';
-    return;
-  }
-  
-  try {
-    // Get active users from profiles table only
-    const { data: users, error } = await supabaseClient
-      .from('profiles')
-      .select('*')
-      .eq('approved', true);
-      
-    if (error) throw error;
-    
-    if (users && users.length > 0) {
-      let html = '';
-      users.forEach(user => {
-        html += `
-          <tr>
-            <td>${user.full_name || 'Unknown'}</td>
-            <td>${user.email || 'Unknown'}</td>
-            <td>${user.role || 'member'}</td>
-            <td>
-              <div class="btn-group" role="group">
-                <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
-                  Change Role
-                </button>
-                <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="#" onclick="changeUserRole('${user.id}', 'admin')">Admin</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="changeUserRole('${user.id}', 'editor')">Editor</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="changeUserRole('${user.id}', 'contributor')">Contributor</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="changeUserRole('${user.id}', 'volunteer')">Volunteer</a></li>
-                </ul>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-      tableBody.innerHTML = html;
-    } else {
-      tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No active users found.</td></tr>';
-    }
-  } catch (error) {
-    console.error('Error loading active users:', error);
-    tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error loading users: ${error.message}</td></tr>`;
-  }
-}
-
-// Helper function to approve user with specific role
-async function approveUserWithRole(userId, role) {
-  try {
-    await approveUser(userId, role);
-    alert(`User approved with role: ${role}`);
-    loadPendingUsers(); // Refresh the list
-  } catch (error) {
-    alert(`Error approving user: ${error.message}`);
-  }
-}
-
-// Helper function to confirm user rejection
-async function rejectUserConfirm(userId) {
-  if (confirm('Are you sure you want to reject this user? This action cannot be undone.')) {
+// Function to check authentication status
+async function checkAuth() {
     try {
-      await rejectUser(userId);
-      alert('User rejected successfully');
-      loadPendingUsers(); // Refresh the list
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        
+        if (session) {
+            // User is logged in
+            console.log('User is authenticated:', session.user);
+            
+            // Update UI for logged in state
+            updateAuthUI(true);
+            
+            // Update user info
+            updateUserInfo(session.user);
+            
+            // Check if user is approved
+            await checkUserApproval(session.user.id);
+        } else {
+            // User is not logged in
+            console.log('User is not authenticated');
+            
+            // Update UI for logged out state
+            updateAuthUI(false);
+        }
     } catch (error) {
-      alert(`Error rejecting user: ${error.message}`);
+        console.error('Auth check error:', error);
+        
+        // Assume not authenticated on error
+        updateAuthUI(false);
     }
-  }
 }
 
-// Function to change user role
+// Function to check if user is approved
+async function checkUserApproval(userId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('approved, role')
+            .eq('id', userId)
+            .single();
+        
+        if (error) {
+            console.error('Error checking approval status:', error);
+            return;
+        }
+        
+        console.log('User profile:', data);
+        
+        if (data) {
+            // Update user role display
+            updateUserRole(data.role);
+            
+            // Check if user is an admin
+            if (data.role === 'admin') {
+                enableAdminFeatures();
+            }
+            
+            // Check if user is approved
+            if (!data.approved) {
+                // User is not approved
+                showToast('Warning', 'Your account is pending approval by an administrator.');
+            }
+        }
+    } catch (error) {
+        console.error('Approval check error:', error);
+    }
+}
+
+// Function to update auth UI based on auth state
+function updateAuthUI(isAuthenticated) {
+    const loggedInMenu = document.getElementById('loggedInMenu');
+    const loggedOutMenu = document.getElementById('loggedOutMenu');
+    const protectedContent = document.getElementById('protectedContent');
+    const authOverlay = document.getElementById('authOverlay');
+    
+    if (isAuthenticated) {
+        // Show logged in menu
+        if (loggedInMenu) loggedInMenu.classList.remove('d-none');
+        if (loggedOutMenu) loggedOutMenu.classList.add('d-none');
+        
+        // Show protected content
+        if (protectedContent) protectedContent.classList.remove('content-protected');
+        if (authOverlay) authOverlay.classList.add('d-none');
+    } else {
+        // Show logged out menu
+        if (loggedInMenu) loggedInMenu.classList.add('d-none');
+        if (loggedOutMenu) loggedOutMenu.classList.remove('d-none');
+        
+        // Hide protected content
+        if (protectedContent) protectedContent.classList.add('content-protected');
+        if (authOverlay) authOverlay.classList.remove('d-none');
+    }
+}
+
+// Function to update user info in UI
+function updateUserInfo(user) {
+    const userDisplayName = document.getElementById('userDisplayName');
+    const userAvatar = document.getElementById('userAvatar');
+    
+    if (user) {
+        // Set user display name (use email if name not available)
+        if (userDisplayName) {
+            if (user.user_metadata && user.user_metadata.full_name) {
+                userDisplayName.textContent = user.user_metadata.full_name.split(' ')[0];
+            } else {
+                userDisplayName.textContent = user.email.split('@')[0];
+            }
+        }
+        
+        // Set user avatar initials
+        if (userAvatar) {
+            userAvatar.textContent = getInitialsFromUser(user);
+        }
+        
+        // Set sender field in new post form to user's email
+        const postSender = document.getElementById('postSender');
+        if (postSender) {
+            postSender.value = user.email;
+        }
+    }
+}
+
+// Function to update user role display
+function updateUserRole(role) {
+    const userRole = document.getElementById('userRole');
+    
+    if (userRole && role) {
+        // Capitalize first letter of role
+        const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
+        userRole.textContent = `Role: ${formattedRole}`;
+    }
+}
+
+// Function to enable admin features
+function enableAdminFeatures() {
+    // Show admin-only menu items
+    const adminElements = document.querySelectorAll('.admin-only');
+    adminElements.forEach(element => {
+        element.classList.remove('d-none');
+    });
+    
+    // Set up user management functionality
+    loadPendingUsers();
+    loadActiveUsers();
+}
+
+// Function to get initials from user object
+function getInitialsFromUser(user) {
+    if (user.user_metadata && user.user_metadata.full_name) {
+        const nameParts = user.user_metadata.full_name.split(' ');
+        if (nameParts.length > 1) {
+            return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+        } else {
+            return nameParts[0].substring(0, 2).toUpperCase();
+        }
+    } else {
+        // Fall back to email
+        const email = user.email;
+        const name = email.split('@')[0];
+        if (name.includes('.')) {
+            const parts = name.split('.');
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
+}
+
+// Function to evaluate password strength
+function getPasswordStrength(password) {
+    if (password.length < 8) {
+        return 'weak';
+    }
+    
+    // Check for numbers
+    const hasNumber = /\d/.test(password);
+    
+    // Check for special characters
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    // Check for uppercase letters
+    const hasUppercase = /[A-Z]/.test(password);
+    
+    // Count the strength factors
+    let score = 0;
+    if (hasNumber) score++;
+    if (hasSpecial) score++;
+    if (hasUppercase) score++;
+    
+    if (score === 0) {
+        return 'weak';
+    } else if (score < 3) {
+        return 'medium';
+    } else {
+        return 'strong';
+    }
+}
+
+// Function to show toast notification
+function showToast(title, message) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toastId = 'toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'toast';
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    toast.innerHTML = `
+        <div class="toast-header">
+            <strong class="me-auto">${title}</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Initialize and show the toast
+    try {
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+    } catch (error) {
+        console.warn('Bootstrap Toast API not available, using fallback', error);
+        // Fallback if Bootstrap API not available
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 150);
+        }, 5000);
+    }
+    
+    // Remove toast after it's hidden (for Bootstrap API)
+    toast.addEventListener('hidden.bs.toast', function() {
+        toast.remove();
+    });
+}
+
+// Function to set up user management functionality
+function setupUserManagement() {
+    // Set up tabs event handlers
+    const pendingTab = document.getElementById('pending-tab');
+    const activeTab = document.getElementById('active-tab');
+    
+    if (pendingTab) {
+        pendingTab.addEventListener('click', loadPendingUsers);
+    }
+    
+    if (activeTab) {
+        activeTab.addEventListener('click', loadActiveUsers);
+    }
+}
+
+// Function to load pending users
+async function loadPendingUsers() {
+    const pendingUsersTable = document.getElementById('pendingUsersTable');
+    
+    if (!pendingUsersTable) return;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('approved', false)
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            throw error;
+        }
+        
+        if (data && data.length > 0) {
+            let html = '';
+            
+            data.forEach(user => {
+                const createdDate = new Date(user.created_at).toLocaleDateString();
+                
+                html += `
+                    <tr>
+                        <td>${user.full_name || 'Unknown'}</td>
+                        <td>${user.email || 'No email'}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="approveUser('${user.id}')">
+                                <i class="bi bi-check-lg"></i> Approve
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectUser('${user.id}')">
+                                <i class="bi bi-x-lg"></i> Reject
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            pendingUsersTable.innerHTML = html;
+        } else {
+            pendingUsersTable.innerHTML = '<tr><td colspan="4" class="text-center">No pending users</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading pending users:', error);
+        pendingUsersTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-danger">
+                    Error loading users: ${error.message}
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// Function to load active users
+async function loadActiveUsers() {
+    const activeUsersTable = document.getElementById('activeUsersTable');
+    
+    if (!activeUsersTable) return;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('approved', true)
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            throw error;
+        }
+        
+        if (data && data.length > 0) {
+            let html = '';
+            
+            data.forEach(user => {
+                // Capitalize first letter of role
+                const role = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User';
+                
+                html += `
+                    <tr>
+                        <td>${user.full_name || 'Unknown'}</td>
+                        <td>${user.email || 'No email'}</td>
+                        <td>${role}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    Actions
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="changeUserRole('${user.id}', 'admin')">Make Admin</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="changeUserRole('${user.id}', 'user')">Make User</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="deactivateUser('${user.id}')">Deactivate</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            activeUsersTable.innerHTML = html;
+        } else {
+            activeUsersTable.innerHTML = '<tr><td colspan="4" class="text-center">No active users</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading active users:', error);
+        activeUsersTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-danger">
+                    Error loading users: ${error.message}
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// Function to approve a user
+async function approveUser(userId) {
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ approved: true })
+            .eq('id', userId);
+        
+        if (error) {
+            throw error;
+        }
+        
+        // Reload pending users
+        loadPendingUsers();
+        
+        // Show success message
+        showToast('Success', 'User approved successfully');
+    } catch (error) {
+        console.error('Error approving user:', error);
+        showToast('Error', `Error approving user: ${error.message}`);
+    }
+}
+
+// Function to reject/delete a user
+async function rejectUser(userId) {
+    if (!confirm('Are you sure you want to reject this user? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        // Delete profile first (due to foreign key constraints)
+        const { error: profileError } = await supabaseClient
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+        
+        if (profileError) {
+            throw profileError;
+        }
+        
+        // Reload pending users
+        loadPendingUsers();
+        
+        // Show success message
+        showToast('Success', 'User rejected successfully');
+    } catch (error) {
+        console.error('Error rejecting user:', error);
+        showToast('Error', `Error rejecting user: ${error.message}`);
+    }
+}
+
+// Function to change a user's role
 async function changeUserRole(userId, newRole) {
-  try {
-    await approveUser(userId, newRole);
-    alert(`User role changed to: ${newRole}`);
-    loadActiveUsers(); // Refresh the list
-  } catch (error) {
-    alert(`Error changing user role: ${error.message}`);
-  }
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ role: newRole })
+            .eq('id', userId);
+        
+        if (error) {
+            throw error;
+        }
+        
+        // Reload active users
+        loadActiveUsers();
+        
+        // Show success message
+        showToast('Success', `User role changed to ${newRole}`);
+    } catch (error) {
+        console.error('Error changing user role:', error);
+        showToast('Error', `Error changing user role: ${error.message}`);
+    }
 }
 
-// Helper function to get initials from name
-function getInitials(name) {
-  if (!name) return '??';
-  
-  // If it's an email without a name
-  if (name.includes('@')) {
-    return name.substring(0, 2).toUpperCase();
-  }
-  
-  // For a full name
-  const parts = name.split(' ');
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  
-  // For a single name
-  return name.substring(0, 2).toUpperCase();
+// Function to deactivate a user
+async function deactivateUser(userId) {
+    if (!confirm('Are you sure you want to deactivate this user? They will no longer have access to the system.')) {
+        return;
+    }
+    
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ approved: false })
+            .eq('id', userId);
+        
+        if (error) {
+            throw error;
+        }
+        
+        // Reload active users
+        loadActiveUsers();
+        
+        // Show success message
+        showToast('Success', 'User deactivated successfully');
+    } catch (error) {
+        console.error('Error deactivating user:', error);
+        showToast('Error', `Error deactivating user: ${error.message}`);
+    }
 }
 
-// Make these functions global so they can be called from HTML
-window.approveUserWithRole = approveUserWithRole;
-window.rejectUserConfirm = rejectUserConfirm;
+// Make user management functions available globally
+window.approveUser = approveUser;
+window.rejectUser = rejectUser;
 window.changeUserRole = changeUserRole;
+window.deactivateUser = deactivateUser;
