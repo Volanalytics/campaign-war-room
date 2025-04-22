@@ -1,7 +1,12 @@
 // discord-bot.js - A bot to forward Discord messages to email
 const { Client, GatewayIntentBits, Events } = require('discord.js');
 const nodemailer = require('nodemailer');
+const express = require('express');
 require('dotenv').config();
+
+// Create Express app
+const app = express();
+const port = process.env.PORT || 3000;
 
 // Create a new Discord client
 const client = new Client({
@@ -99,7 +104,11 @@ function determineActionType(message) {
 client.on(Events.MessageCreate, async message => {
   // Ignore messages from bots or from non-monitored channels
   if (message.author.bot) return;
-  if (!CONFIG.MONITORED_CHANNELS.includes(message.channel.id)) return;
+  if (!CONFIG.MONITORED_CHANNELS.includes(message.channel.id)) {
+    return;
+  }
+  
+  log(`Received message from ${message.author.username} in channel ${message.channel.id} (#${message.channel.name}): "${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}"`);
   
   try {
     // Get message details
@@ -109,6 +118,8 @@ client.on(Events.MessageCreate, async message => {
     const category = determineCategory(message);
     const actionType = determineActionType(message);
     
+    log(`Categorized as: ${category}, Action type: ${actionType}`);
+    
     // Format message for email
     let emailSubject = content.split('\n')[0];
     if (emailSubject.length > 100) {
@@ -117,6 +128,7 @@ client.on(Events.MessageCreate, async message => {
     
     // Process attachments
     const attachments = await formatAttachments(message);
+    log(`Processing ${attachments.length} attachments`);
     
     // Create email content
     const emailContent = `
@@ -141,18 +153,66 @@ Time: ${new Date().toISOString()}
       attachments: attachments,
     };
     
+    log(`Sending email to ${CONFIG.TARGET_EMAIL} with subject: ${emailSubject || 'New Discord Message'}`);
     await transporter.sendMail(mailOptions);
-    console.log(`Forwarded message from ${author} to ${CONFIG.TARGET_EMAIL}`);
+    log(`Successfully forwarded message from ${author} to ${CONFIG.TARGET_EMAIL}`);
     
     // React to the message to confirm it was forwarded
     await message.react('📧');
+    log('Added email reaction to message');
   } catch (error) {
-    console.error('Error forwarding message to email:', error);
-    await message.react('❌');
+    log(`Error forwarding message to email: ${error.message}`);
+    try {
+      await message.react('❌');
+      log('Added error reaction to message');
+    } catch (reactError) {
+      log(`Failed to add error reaction: ${reactError.message}`);
+    }
   }
 });
 
-// Login to Discord
-client.login(CONFIG.DISCORD_BOT_TOKEN);
+// Function to log to file and console
+function log(message) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}`;
+  console.log(logMessage);
+  
+  // Optionally log to file
+  const fs = require('fs');
+  fs.appendFileSync('bot-log.txt', logMessage + '\n');
+}
 
-console.log('Discord bot started, waiting for messages...');
+// Login to Discord
+client.login(CONFIG.DISCORD_BOT_TOKEN)
+  .then(() => {
+    log('Discord bot started, waiting for messages...');
+    log(`Monitoring channels: ${CONFIG.MONITORED_CHANNELS.join(', ')}`);
+  })
+  .catch(error => {
+    log(`Error connecting to Discord: ${error.message}`);
+  });
+
+// Setup Express routes
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <head><title>Discord Email Forwarder</title></head>
+      <body>
+        <h1>Discord Email Forwarder</h1>
+        <p>Bot Status: ${client.isReady() ? 'Online' : 'Offline'}</p>
+        <p>Uptime: ${client.uptime ? Math.floor(client.uptime / 60000) + ' minutes' : 'Not connected'}</p>
+        <p>Monitoring channels: ${CONFIG.MONITORED_CHANNELS.join(', ')}</p>
+      </body>
+    </html>
+  `);
+});
+
+// Ping route to keep the service alive
+app.get('/ping', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Start Express server
+app.listen(port, () => {
+  log(`Web server listening at http://localhost:${port}`);
+});
