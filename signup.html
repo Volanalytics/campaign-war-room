@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Hub - Sign Up</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .signup-container {
+            max-width: 480px;
+            width: 100%;
+            padding: 20px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+        }
+        .card-header h3 {
+            margin-bottom: 0;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .signup-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #6c757d;
+        }
+        .error-message {
+            color: #dc3545;
+            margin-top: 1rem;
+            display: none;
+        }
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .password-strength {
+            height: 5px;
+            margin-top: 5px;
+            border-radius: 2px;
+            background-color: #dc3545;
+        }
+        .password-strength.weak {
+            background-color: #dc3545;
+            width: 25%;
+        }
+        .password-strength.medium {
+            background-color: #ffc107;
+            width: 50%;
+        }
+        .password-strength.strong {
+            background-color: #198754;
+            width: 100%;
+        }
+        .password-feedback {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <div class="card">
+            <div class="card-header">
+                <h3>Action Hub</h3>
+                <p class="mb-0">Create your account</p>
+            </div>
+            <div class="card-body">
+                <form id="signupForm">
+                    <div class="form-group">
+                        <label for="fullName" class="form-label">Full Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="fullName" placeholder="Your full name" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" placeholder="Email address" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" id="password" placeholder="Create a strong password" required>
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-strength" id="passwordStrength"></div>
+                        <div class="password-feedback text-muted" id="passwordFeedback">Password must be at least 8 characters long</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                            <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm your password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="termsAgreement" required>
+                        <label class="form-check-label" for="termsAgreement">
+                            I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a>
+                        </label>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">Create Account</button>
+                    </div>
+                    
+                    <div class="loading-spinner" id="loadingSpinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Creating your account...</p>
+                    </div>
+                    
+                    <div class="error-message" id="errorMessage"></div>
+                </form>
+                
+                <div class="signup-footer">
+                    <p>Already have an account? <a href="/login.html">Sign in</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms and Conditions Modal -->
+    <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="termsModalLabel">Terms and Conditions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h5>1. Acceptance of Terms</h5>
+                    <p>By accessing and using the Action Hub, you agree to be bound by these Terms and Conditions.</p>
+                    
+                    <h5>2. User Accounts</h5>
+                    <p>You are responsible for maintaining the confidentiality of your account and password. You agree to accept responsibility for all activities that occur under your account.</p>
+                    
+                    <h5>3. Privacy</h5>
+                    <p>Your use of the Action Hub is subject to our Privacy Policy, which governs how we collect, use, and disclose information.</p>
+                    
+                    <h5>4. Content</h5>
+                    <p>You are solely responsible for any content you post, submit, or display on the Action Hub.</p>
+                    
+                    <h5>5. Termination</h5>
+                    <p>We reserve the right to terminate your account and access to the Action Hub at our sole discretion, without notice, for conduct that we believe violates these Terms and Conditions or is harmful to other users, us, or third parties, or for any other reason.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="acceptTerms" data-bs-dismiss="modal">Accept</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="successModalLabel">Account Created</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3">Registration Successful!</h4>
+                    </div>
+                    <p>Your account has been created and is pending approval. You will receive an email notification when your account is approved.</p>
+                    <p>Please check your email to verify your email address.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="goToLogin">Go to Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is already logged in
+            checkAuthState();
+            
+            // Toggle password visibility
+            const togglePassword = document.getElementById('togglePassword');
+            const password = document.getElementById('password');
+            
+            togglePassword.addEventListener('click', function() {
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+                this.querySelector('i').classList.toggle('bi-eye');
+                this.querySelector('i').classList.toggle('bi-eye-slash');
+            });
+            
+            // Password strength checker
+            const passwordInput = document.getElementById('password');
+            const passwordStrength = document.getElementById('passwordStrength');
+            const passwordFeedback = document.getElementById('passwordFeedback');
+            
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                const strength = getPasswordStrength(password);
+                
+                passwordStrength.className = 'password-strength';
+                
+                if (password.length === 0) {
+                    passwordStrength.style.width = '0';
+                    passwordFeedback.textContent = 'Password must be at least 8 characters long';
+                } else if (strength === 'weak') {
+                    passwordStrength.classList.add('weak');
+                    passwordFeedback.textContent = 'Weak: Add numbers and special characters';
+                } else if (strength === 'medium') {
+                    passwordStrength.classList.add('medium');
+                    passwordFeedback.textContent = 'Medium: Try adding special characters';
+                } else {
+                    passwordStrength.classList.add('strong');
+                    passwordFeedback.textContent = 'Strong password';
+                }
+            });
+            
+            // Terms agreement
+            document.getElementById('acceptTerms').addEventListener('click', function() {
+                document.getElementById('termsAgreement').checked = true;
+            });
+            
+            // Go to login button in success modal
+            document.getElementById('goToLogin').addEventListener('click', function() {
+                window.location.href = '/login.html';
+            });
+            
+            // Handle signup form submission
+            const signupForm = document.getElementById('signupForm');
+            signupForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const fullName = document.getElementById('fullName').value;
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const termsAgreement = document.getElementById('termsAgreement').checked;
+                
+                const errorMessage = document.getElementById('errorMessage');
+                const loadingSpinner = document.getElementById('loadingSpinner');
+                
+                // Basic validation
+                if (password !== confirmPassword) {
+                    errorMessage.textContent = 'Passwords do not match';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                
+                if (!termsAgreement) {
+                    errorMessage.textContent = 'You must agree to the Terms and Conditions';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                
+                if (getPasswordStrength(password) === 'weak') {
+                    errorMessage.textContent = 'Please choose a stronger password';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                
+                // Hide error message and show loading spinner
+                errorMessage.style.display = 'none';
+                loadingSpinner.style.display = 'block';
+                
+                // Disable submit button while processing
+                document.querySelector('button[type="submit"]').disabled = true;
+                
+                try {
+                    // Call Supabase auth sign up method
+                    if (typeof supabaseClient !== 'undefined') {
+                        const { data, error } = await supabaseClient.auth.signUp({
+                            email: email,
+                            password: password,
+                            options: {
+                                data: {
+                                    full_name: fullName
+                                }
+                            }
+                        });
+                        
+                        if (error) {
+                            throw error;
+                        }
+                        
+                        // Create profile entry
+                        if (data.user) {
+                            try {
+                                const { error: profileError } = await supabaseClient
+                                    .from('profiles')
+                                    .insert([
+                                        { 
+                                            id: data.user.id,
+                                            full_name: fullName,
+                                            email: email,
+                                            role: 'user',
+                                            approved: false // Requires admin approval
+                                        }
+                                    ]);
+                                
+                                if (profileError) {
+                                    console.error('Profile creation error:', profileError);
+                                    // Continue anyway since the auth account was created
+                                }
+                            } catch (profileError) {
+                                console.error('Profile creation error:', profileError);
+                                // Continue anyway since the auth account was created
+                            }
+                        }
+                        
+                        // Show success modal
+                        loadingSpinner.style.display = 'none';
+                        document.querySelector('button[type="submit"]').disabled = false;
+                        
+                        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                        successModal.show();
+                    } else {
+                        throw new Error('Supabase client not initialized');
+                    }
+                } catch (error) {
+                    console.error('Signup error:', error);
+                    errorMessage.textContent = error.message || 'Error creating account. Please try again.';
+                    errorMessage.style.display = 'block';
+                    loadingSpinner.style.display = 'none';
+                    document.querySelector('button[type="submit"]').disabled = false;
+                }
+            });
+        });
+        
+        // Function to check auth state
+        async function checkAuthState() {
+            try {
+                if (typeof supabaseClient !== 'undefined') {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    
+                    if (session) {
+                        // User is already logged in
+                        window.location.href = '/index.html';
+                    }
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
+        
+        // Function to evaluate password strength
+        function getPasswordStrength(password) {
+            if (password.length < 8) {
+                return 'weak';
+            }
+            
+            // Check for numbers
+            const hasNumber = /\d/.test(password);
+            
+            // Check for special characters
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            
+            // Check for uppercase letters
+            const hasUppercase = /[A-Z]/.test(password);
+            
+            // Count the strength factors
+            let score = 0;
+            if (hasNumber) score++;
+            if (hasSpecial) score++;
+            if (hasUppercase) score++;
+            
+            if (score === 0) {
+                return 'weak';
+            } else if (score < 3) {
+                return 'medium';
+            } else {
+                return 'strong';
+            }
+        }
+    </script>
+</body>
+</html>

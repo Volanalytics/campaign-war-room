@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Hub - Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .login-container {
+            max-width: 420px;
+            width: 100%;
+            padding: 20px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+        }
+        .card-header h3 {
+            margin-bottom: 0;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #6c757d;
+        }
+        .error-message {
+            color: #dc3545;
+            margin-top: 1rem;
+            display: none;
+        }
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="card">
+            <div class="card-header">
+                <h3>Action Hub</h3>
+                <p class="mb-0">Sign in to access your dashboard</p>
+            </div>
+            <div class="card-body">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" placeholder="Email address" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" id="password" placeholder="Password" required>
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="rememberMe">
+                            <label class="form-check-label" for="rememberMe">Remember me</label>
+                        </div>
+                        <div>
+                            <a href="#" id="forgotPassword">Forgot password?</a>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">Sign In</button>
+                    </div>
+                    
+                    <div class="loading-spinner" id="loadingSpinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Signing in...</p>
+                    </div>
+                    
+                    <div class="error-message" id="errorMessage">
+                        Invalid email or password. Please try again.
+                    </div>
+                </form>
+                
+                <div class="login-footer">
+                    <p>Don't have an account? <a href="#" id="signupLink">Sign up</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is already logged in
+            checkAuthState();
+            
+            // Toggle password visibility
+            const togglePassword = document.getElementById('togglePassword');
+            const password = document.getElementById('password');
+            
+            togglePassword.addEventListener('click', function() {
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+                this.querySelector('i').classList.toggle('bi-eye');
+                this.querySelector('i').classList.toggle('bi-eye-slash');
+            });
+            
+            // Handle login form submission
+            const loginForm = document.getElementById('loginForm');
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const errorMessage = document.getElementById('errorMessage');
+                const loadingSpinner = document.getElementById('loadingSpinner');
+                
+                // Hide error message and show loading spinner
+                errorMessage.style.display = 'none';
+                loadingSpinner.style.display = 'block';
+                
+                // Disable submit button while processing
+                document.querySelector('button[type="submit"]').disabled = true;
+                
+                try {
+                    // Call Supabase auth sign in method
+                    if (typeof supabaseClient !== 'undefined') {
+                        const { data, error } = await supabaseClient.auth.signInWithPassword({
+                            email: email,
+                            password: password
+                        });
+                        
+                        if (error) {
+                            throw error;
+                        }
+                        
+                        // Store auth state if remember me is checked
+                        if (document.getElementById('rememberMe').checked) {
+                            localStorage.setItem('rememberMe', 'true');
+                        }
+                        
+                        // Redirect to dashboard
+                        window.location.href = '/index.html';
+                    } else {
+                        throw new Error('Supabase client not initialized');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    errorMessage.textContent = error.message || 'Invalid email or password. Please try again.';
+                    errorMessage.style.display = 'block';
+                    loadingSpinner.style.display = 'none';
+                    document.querySelector('button[type="submit"]').disabled = false;
+                }
+            });
+            
+            // Forgot password link
+            document.getElementById('forgotPassword').addEventListener('click', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                if (!email) {
+                    alert('Please enter your email address first');
+                    return;
+                }
+                
+                if (typeof supabaseClient !== 'undefined') {
+                    supabaseClient.auth.resetPasswordForEmail(email, {
+                        redirectTo: window.location.origin + '/reset-password.html',
+                    })
+                    .then(() => {
+                        alert('Password reset email sent. Please check your inbox.');
+                    })
+                    .catch(error => {
+                        console.error('Reset password error:', error);
+                        alert('Error sending reset email. Please try again.');
+                    });
+                } else {
+                    alert('Authentication system not available. Please try again later.');
+                }
+            });
+            
+            // Sign up link
+            document.getElementById('signupLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                // Redirect to signup page
+                window.location.href = '/signup.html';
+            });
+        });
+        
+        // Function to check auth state
+        async function checkAuthState() {
+            try {
+                if (typeof supabaseClient !== 'undefined') {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    
+                    if (session) {
+                        // User is already logged in
+                        window.location.href = '/index.html';
+                    }
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
