@@ -126,8 +126,14 @@ client.on(Events.MessageCreate, message => {
 
 // Handler for incoming messages
 client.on(Events.MessageCreate, async message => {
-  // Ignore messages from bots or from non-monitored channels
-  if (message.author.bot) return;
+  // Skip messages from bots except for URL-only posts from news bots
+  if (message.author.bot && 
+      !(message.content.startsWith('http') && message.embeds.length > 0)) {
+    console.log(`[DEBUG] Ignoring non-URL message from bot: ${message.author.username}`);
+    return;
+  }
+  
+  // Ignore messages from non-monitored channels
   if (!CONFIG.MONITORED_CHANNELS.includes(message.channel.id)) {
     console.log(`[DEBUG] Ignoring message in non-monitored channel: ${message.channel.id}`);
     return;
@@ -135,6 +141,7 @@ client.on(Events.MessageCreate, async message => {
   
   log(`Received message from ${message.author.username} in channel ${message.channel.id} (#${message.channel.name}): "${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}"`);
   
+    
   try {
     // Get message details
     const author = message.author.username;
