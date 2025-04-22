@@ -1,190 +1,107 @@
 <?php
-// Script to process incoming emails
+// Script to process incoming emails and create posts in Action Hub
 error_log('Email processing script started');
-
-// Database connection configuration
-require_once __DIR__ . '/../config/database.php';
-
-// For testing directly through web access
-$test_mode = isset($_GET['test']) && $_GET['test'] == 1;
-
-if ($test_mode) {
-    // Test data
-    $sender = isset($_GET['sender']) ? $_GET['sender'] : 'test@example.com';
-    $recipient = isset($_GET['recipient']) ? $_GET['recipient'] : 'info@vpterdatahouse.com';
-    $subject = isset($_GET['subject']) ? $_GET['subject'] : 'Test Email';
-    $body = isset($_GET['body']) ? $_GET['body'] : "This is a test email body\n\nIt contains multiple lines of text.";
-    
-    $result = processEmail($sender, $recipient, $subject, $body);
-    
-    // Return JSON response for testing
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => $result,
-        'message' => $result ? 'Email processed successfully' : 'Failed to process email',
-        'details' => [
-            'sender' => $sender,
-            'recipient' => $recipient,
-            'subject' => $subject,
-            'body_preview' => substr($body, 0, 100) . (strlen($body) > 100 ? '...' : '')
-        ]
-    ]);
-    exit;
-} else {
-    // Read email from stdin for pipe delivery or webhook
-    $email_content = file_get_contents('php://stdin');
-    
-    // In a real implementation, you would need a proper email parser library
-    // This is a simplified example that assumes a specific format
-    
-    // Extract headers and body
-    list($headers, $body) = explode("\r\n\r\n", $email_content, 2);
-    
-    // Parse headers (very simplified)
-    $sender = '';
-    $recipient = '';
-    $subject = '';
-    
-    foreach (explode("\r\n", $headers) as $header) {
-        if (strpos($header, 'From:') === 0) {
-            $sender = trim(substr($header, 5));
-            // Extract email from "Name <email>" format if needed
-            if (preg_match('/<(.+?)>/', $sender, $matches)) {
-                $sender = $matches[1];
-            }
-        } else if (strpos($header, 'To:') === 0) {
-            $recipient = trim(substr($header, 3));
-            // Extract email from "Name <email>" format if needed
-            if (preg_match('/<(.+?)>/', $recipient, $matches)) {
-                $recipient = $matches[1];
-            }
-        } else if (strpos($header, 'Subject:') === 0) {
-            $subject = trim(substr($header, 8));
-        }
-    }
-    
-    // Process the email
-    $result = processEmail($sender, $recipient, $subject, $body);
-    error_log("Email processing result: " . ($result ? 'success' : 'failure'));
-}
 
 // Function to process the email and store in the database
 function processEmail($sender, $recipient, $subject, $body) {
-    global $db;
-    
     error_log("Processing email from: $sender");
     error_log("Subject: $subject");
     
-    // Determine category and action type based on content
+    // Determine category based on email content
     $category = determineCategory($subject, $body);
     $action_type = determineActionType($subject, $body);
-    
+
     try {
-        // Insert into the posts table
-        $stmt = $db->prepare("
-            INSERT INTO posts (title, content, sender, recipient, category, action_type, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'new', NOW())
+        // Connect to the database
+        $db_config = require_once __DIR__ . '/../../config/database.php';
+        $pdo = new PDO(
+            "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}",
+            $db_config['username'],
+            $db_config['password']
+        );
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Insert into posts table
+        $stmt = $pdo->prepare("
+            INSERT INTO posts (title, content, sender, recipient, category, action_type, status, created_at) 
+            VALUES (:title, :content, :sender, :recipient, :category, :action_type, 'new', NOW())
+            RETURNING id
         ");
         
         $stmt->execute([
-            $subject,
-            $body,
-            $sender,
-            $recipient,
-            $category,
-            $action_type
+            ':title' => $subject,
+            ':content' => $body,
+            ':sender' => $sender,
+            ':recipient' => $recipient,
+            ':category' => $category,
+            ':action_type' => $action_type
         ]);
         
-        error_log("Email processed successfully. Post ID: " . $db->lastInsertId());
+        $post_id = $stmt->fetchColumn();
+        error_log("Created post with ID: $post_id");
+        
         return true;
     } catch (PDOException $e) {
         error_log("Database error: " . $e->getMessage());
         return false;
+    } catch (Exception $e) {
+        error_log("Error processing email: " . $e->getMessage());
+        return false;
     }
 }
 
-// Function to determine the category based on email content
+// Function to determine category based on email content
 function determineCategory($subject, $body) {
-    $subject_lower = strtolower($subject);
-    $body_lower = strtolower($body);
+    $combined = strtolower($subject . ' ' . $body);
     
-    // Check for urgent markers
-    if (
-        strpos($subject_lower, 'urgent') !== false || 
-        strpos($subject_lower, 'emergency') !== false ||
-        strpos($subject_lower, 'asap') !== false ||
-        strpos($body_lower, 'urgent') !== false
-    ) {
+    if (strpos($combined, 'urgent') !== false || 
+        strpos($combined, 'emergency') !== false || 
+        strpos($combined, 'asap') !== false) {
         return 'Urgent';
-    }
-    
-    // Check for social media related content
-    if (
-        strpos($subject_lower, 'social media') !== false ||
-        strpos($subject_lower, 'facebook') !== false ||
-        strpos($subject_lower, 'twitter') !== false ||
-        strpos($subject_lower, 'linkedin') !== false ||
-        strpos($body_lower, 'social media') !== false ||
-        strpos($body_lower, 'share on') !== false
-    ) {
+    } else if (strpos($combined, 'social media') !== false || 
+               strpos($combined, 'twitter') !== false || 
+               strpos($combined, 'facebook') !== false || 
+               strpos($combined, 'linkedin') !== false) {
         return 'Social Media';
-    }
-    
-    // Check for email response requests
-    if (
-        strpos($subject_lower, 'please respond') !== false ||
-        strpos($subject_lower, 'response needed') !== false ||
-        strpos($body_lower, 'please respond') !== false ||
-        strpos($body_lower, 'please reply') !== false ||
-        strpos($body_lower, 'response needed') !== false
-    ) {
+    } else if (strpos($combined, 'email action') !== false || 
+               strpos($combined, 'respond') !== false || 
+               strpos($combined, 'reply') !== false) {
         return 'Email Action';
+    } else {
+        return 'General';
     }
-    
-    // Default category
-    return 'General';
 }
 
-// Function to determine the action type based on email content
+// Function to determine action type
 function determineActionType($subject, $body) {
-    $subject_lower = strtolower($subject);
-    $body_lower = strtolower($body);
+    $combined = strtolower($subject . ' ' . $body);
     
-    // Check for technical support issues
-    if (
-        strpos($subject_lower, 'error') !== false ||
-        strpos($subject_lower, 'issue') !== false ||
-        strpos($subject_lower, 'problem') !== false ||
-        strpos($subject_lower, 'not working') !== false ||
-        strpos($body_lower, 'error') !== false ||
-        strpos($body_lower, 'broken') !== false ||
-        strpos($body_lower, 'fix') !== false
-    ) {
+    if (strpos($combined, 'tech') !== false || 
+        strpos($combined, 'bug') !== false || 
+        strpos($combined, 'error') !== false || 
+        strpos($combined, 'fix') !== false) {
         return 'technical_support';
-    }
-    
-    // Check for social media sharing
-    if (
-        strpos($subject_lower, 'share') !== false ||
-        strpos($subject_lower, 'post on') !== false ||
-        strpos($body_lower, 'share this') !== false ||
-        strpos($body_lower, 'post this') !== false
-    ) {
+    } else if (strpos($combined, 'social') !== false || 
+               strpos($combined, 'share') !== false || 
+               strpos($combined, 'post') !== false) {
         return 'social_share';
-    }
-    
-    // Check for email response needed
-    if (
-        strpos($subject_lower, 'please respond') !== false ||
-        strpos($subject_lower, 'response needed') !== false ||
-        strpos($body_lower, 'please respond') !== false ||
-        strpos($body_lower, 'please reply') !== false ||
-        strpos($body_lower, 'response needed') !== false
-    ) {
+    } else if (strpos($combined, 'email') !== false || 
+               strpos($combined, 'reply') !== false || 
+               strpos($combined, 'respond') !== false) {
         return 'email_response';
+    } else {
+        return 'general';
     }
-    
-    // Default action type
-    return 'general';
 }
-?>
+
+// If called directly (for testing)
+if (php_sapi_name() == 'cli' || isset($_GET['test'])) {
+    // Test data
+    $sender = 'test@example.com';
+    $recipient = 'campaign101@voterdatahouse.com';
+    $subject = 'Test Email';
+    $body = "This is a test email body\n\nIt contains multiple lines of text.";
+    
+    processEmail($sender, $recipient, $subject, $body);
+    echo "Test email processed";
+}
