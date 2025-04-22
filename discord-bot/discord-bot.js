@@ -100,11 +100,36 @@ function determineActionType(message) {
   }
 }
 
+// Debug event for all message creation
+client.on(Events.MessageCreate, message => {
+  console.log(`[DEBUG] Message received in channel: ${message.channel.id}`);
+  
+  if (message.channel.id === '798021611764449283') {
+    console.log(`[DEBUG] Message in target #general channel: "${message.content.substring(0, 50)}..."`);
+    
+    // Check if bot can see the message properly
+    if (message.content) {
+      console.log('[DEBUG] Message content is visible to bot');
+    } else {
+      console.log('[DEBUG] Message content is NOT visible to bot - check Message Content Intent');
+    }
+    
+    // Check if bot has reaction permissions
+    const permissions = message.channel.permissionsFor(client.user);
+    if (permissions && permissions.has('ADD_REACTIONS')) {
+      console.log('[DEBUG] Bot has permission to add reactions');
+    } else {
+      console.log('[DEBUG] Bot does NOT have permission to add reactions');
+    }
+  }
+});
+
 // Handler for incoming messages
 client.on(Events.MessageCreate, async message => {
   // Ignore messages from bots or from non-monitored channels
   if (message.author.bot) return;
   if (!CONFIG.MONITORED_CHANNELS.includes(message.channel.id)) {
+    console.log(`[DEBUG] Ignoring message in non-monitored channel: ${message.channel.id}`);
     return;
   }
   
@@ -171,6 +196,20 @@ Time: ${new Date().toISOString()}
   }
 });
 
+// Log when the bot connects to Discord
+client.on(Events.ClientReady, () => {
+  console.log(`[DEBUG] Logged in as ${client.user.tag}!`);
+  console.log(`[DEBUG] Bot is a member of ${client.guilds.cache.size} servers`);
+  
+  // List all available channels the bot can see
+  console.log('[DEBUG] Available channels:');
+  client.channels.cache.forEach(channel => {
+    if (channel.type === 0) { // 0 is GUILD_TEXT
+      console.log(`[DEBUG] - #${channel.name}: ${channel.id}`);
+    }
+  });
+});
+
 // Function to log to file and console
 function log(message) {
   const timestamp = new Date().toISOString();
@@ -178,8 +217,21 @@ function log(message) {
   console.log(logMessage);
   
   // Optionally log to file
-  const fs = require('fs');
-  fs.appendFileSync('bot-log.txt', logMessage + '\n');
+  try {
+    const fs = require('fs');
+    const logsDir = './logs';
+    
+    // Create logs directory if it doesn't exist
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir);
+    }
+    
+    // Get current date for log file name
+    const today = new Date().toISOString().split('T')[0];
+    fs.appendFileSync(`${logsDir}/bot-log-${today}.txt`, logMessage + '\n');
+  } catch (error) {
+    console.error(`[ERROR] Failed to write to log file: ${error.message}`);
+  }
 }
 
 // Login to Discord
@@ -205,6 +257,24 @@ app.get('/', (req, res) => {
       </body>
     </html>
   `);
+});
+
+// Debug route to show detailed information
+app.get('/debug', (req, res) => {
+  const monitoredChannels = CONFIG.MONITORED_CHANNELS.map(id => {
+    const channel = client.channels.cache.get(id);
+    return channel ? `#${channel.name} (${id})` : `Unknown channel (${id})`;
+  });
+  
+  res.json({
+    botStatus: client.isReady() ? 'Online' : 'Offline',
+    uptime: client.uptime ? Math.floor(client.uptime / 60000) + ' minutes' : 'Not connected',
+    monitoringChannels: CONFIG.MONITORED_CHANNELS,
+    resolvedChannels: monitoredChannels,
+    availableChannels: Array.from(client.channels.cache
+      .filter(channel => channel.type === 0)
+      .map(channel => ({ name: channel.name, id: channel.id })))
+  });
 });
 
 // Ping route to keep the service alive
