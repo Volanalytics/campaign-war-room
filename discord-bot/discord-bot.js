@@ -126,9 +126,12 @@ client.on(Events.MessageCreate, message => {
 
 // Handler for incoming messages
 client.on(Events.MessageCreate, async message => {
-  // Skip messages from bots except for URL-only posts from news bots
-  if (message.author.bot && 
-      !(message.content.startsWith('http') && message.embeds.length > 0)) {
+  // Log all messages for debugging
+  console.log(`[DEBUG] Message from ${message.author.username}: "${message.content}"`);
+  console.log(`[DEBUG] Is bot: ${message.author.bot}, Has embeds: ${message.embeds.length > 0}`);
+  
+  // Skip messages from bots except for URL-only posts
+  if (message.author.bot && !message.content.startsWith('http')) {
     console.log(`[DEBUG] Ignoring non-URL message from bot: ${message.author.username}`);
     return;
   }
