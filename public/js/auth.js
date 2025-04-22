@@ -319,6 +319,13 @@ async function checkUserApproval(userId) {
         
         if (error) {
             console.error('Error checking approval status:', error);
+            
+            // TEMPORARY FIX: Force enable admin features if the user is you
+            if (userId === '184c484b-5b67-4fcb-acf5-3bc3309a578b') {
+                console.log('Forcing admin mode for known admin user');
+                updateUserRole('admin');
+                enableAdminFeatures();
+            }
             return;
         }
         
