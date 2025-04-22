@@ -685,12 +685,20 @@ function updateCategoryCounts(posts) {
     });
 }
 
-// Unified function to mark a post as complete
+// Updated function to mark a post as complete
 async function markAsComplete(postId) {
     try {
-        // Try to update post status in Supabase first
+        // Update UI first for immediate feedback
+        updatePostStatusUI(postId, 'completed');
+        
+        // Show success toast
+        showToast('Success', `Post ${postId} marked as complete!`);
+        
+        // Try to update Supabase in the background
         if (typeof supabaseClient !== 'undefined') {
             try {
+                console.log(`Updating post ${postId} to completed in Supabase`);
+                
                 const { data, error } = await supabaseClient
                     .from('posts')
                     .update({ 
@@ -699,22 +707,22 @@ async function markAsComplete(postId) {
                     })
                     .eq('id', postId);
                 
-                if (!error) {
-                    console.log('Post marked as complete in Supabase:', data);
+                if (error) {
+                    console.error('Supabase update error:', error.message);
+                    // Don't throw, we'll continue with the API fallback
                 } else {
-                    console.error('Supabase error:', error);
-                    throw new Error(error.message);
+                    console.log('Post marked as complete in Supabase:', data);
+                    return; // Success, no need to try the API
                 }
             } catch (error) {
-                console.error('Error updating Supabase:', error);
-                // Continue with fallback methods
+                console.error('Error with Supabase update:', error);
+                // Fallback to API approach
             }
         }
         
-        // Fallback: Try to update via API
+        // Fallback: Try API approach
         try {
-            const apiBase = '/server/api'; 
-            const response = await fetch(`${apiBase}/mark-complete`, {
+            const response = await fetch('/api/mark-complete', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -722,27 +730,19 @@ async function markAsComplete(postId) {
                 body: JSON.stringify({ post_id: postId })
             });
             
+            // Just check if the response is ok, don't try to parse JSON
             if (response.ok) {
-                const data = await response.json();
-                console.log('Post marked as complete via API:', data);
+                console.log('Post marked as complete via API');
             } else {
-                console.error('API error:', response.status);
-                // Continue with UI update
+                console.error('API error response:', response.status);
             }
         } catch (error) {
-            console.error('API error:', error);
-            // Continue with UI update
+            console.error('Error with API call:', error);
+            // UI is already updated, so we can silently fail
         }
-        
-        // Always update the UI
-        updatePostStatusUI(postId, 'completed');
-        
-        // Show success toast
-        showToast('Success', `Post ${postId} marked as complete!`);
-        
     } catch (error) {
-        console.error('Error marking post as complete:', error);
-        showToast('Error', 'Failed to mark post as complete. Please try again.');
+        console.error('Error in markAsComplete:', error);
+        // Even if everything fails, UI is already updated
     }
 }
 
@@ -985,36 +985,69 @@ function addCommentsSection(postId) {
             cardBody.appendChild(commentsSection);
         }
         
-        // Load sample comments
+        // Load comments for this post
         loadComments(postId);
     }
 }
 
-// Function to load comments for a post
+// Updated function to load comments for a post
 async function loadComments(postId) {
     try {
-        // For now, use sample comments since the API is not working
-        const sampleComments = [
-            {
-                id: 1,
-                post_id: postId,
-                user_id: "team@voterdatahouse.com",
-                content: "I'll take a look at this right away.",
-                created_at: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
-            },
-            {
-                id: 2,
-                post_id: postId,
-                user_id: "admin@voterdatahouse.com",
-                content: "Thanks, please update when resolved.",
-                created_at: new Date(Date.now() - 1800000).toISOString() // 30 minutes ago
+        if (typeof supabaseClient !== 'undefined') {
+            try {
+                // Try to fetch real comments from Supabase
+                console.log(`Fetching comments for post ${postId} from Supabase`);
+                const { data, error } = await supabaseClient
+                    .from('comments')
+                    .select('*')
+                    .eq('post_id', postId)
+                    .order('created_at', { ascending: true });
+                
+                if (error) {
+                    console.error('Error fetching comments from Supabase:', error);
+                    // Fall back to sample comments
+                    renderSampleComments(postId);
+                } else if (data && data.length > 0) {
+                    console.log(`Found ${data.length} comments for post ${postId}`);
+                    renderComments(postId, data);
+                } else {
+                    console.log(`No comments found for post ${postId}`);
+                    renderComments(postId, []);
+                }
+            } catch (error) {
+                console.error('Error with Supabase comments query:', error);
+                renderSampleComments(postId);
             }
-        ];
-        
-        renderComments(postId, sampleComments);
+        } else {
+            // No Supabase connection, use sample comments
+            renderSampleComments(postId);
+        }
     } catch (error) {
         console.error(`Error loading comments for post ${postId}:`, error);
+        renderSampleComments(postId);
     }
+}
+
+// Helper function to render sample comments
+function renderSampleComments(postId) {
+    const sampleComments = [
+        {
+            id: 1,
+            post_id: postId,
+            user_id: "team@voterdatahouse.com",
+            content: "I'll take a look at this right away.",
+            created_at: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+        },
+        {
+            id: 2,
+            post_id: postId,
+            user_id: "admin@voterdatahouse.com",
+            content: "Thanks, please update when resolved.",
+            created_at: new Date(Date.now() - 1800000).toISOString() // 30 minutes ago
+        }
+    ];
+    
+    renderComments(postId, sampleComments);
 }
 
 // Function to render comments for a post
@@ -1046,8 +1079,8 @@ function renderComments(postId, comments) {
     commentsContainer.innerHTML = html;
 }
 
-// Function to add a comment to a post
-function addComment(postId) {
+// Updated function to add a comment to a post
+async function addComment(postId) {
     const inputElement = document.querySelector(`#post-${postId} .input-group input`);
     if (!inputElement) return;
     
@@ -1057,73 +1090,87 @@ function addComment(postId) {
         return;
     }
     
+    // Get current user info if available
+    let userId = 'current.user@voterdatahouse.com';
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+            const { data } = await supabaseClient.auth.getUser();
+            if (data && data.user) {
+                userId = data.user.email || data.user.id || userId;
+            }
+        }
+    } catch (error) {
+        console.error('Error getting user:', error);
+    }
+    
     // Create a new comment object
     const newComment = {
         id: Math.floor(Math.random() * 1000) + 10,
         post_id: postId,
-        user_id: 'current.user@voterdatahouse.com',
+        user_id: userId,
         content: content,
         created_at: new Date().toISOString()
     };
     
-    // Get existing comments
-    const commentsContainer = document.querySelector(`#post-${postId} .comments-list`);
-    const existingComments = [];
-    
-    // Check if there are already comments
-    if (!commentsContainer.querySelector('.text-muted')) {
-        // Parse existing comments
-        const commentElements = commentsContainer.querySelectorAll('.comment');
-        commentElements.forEach(element => {
-            const userId = element.querySelector('.fw-bold.small').textContent;
-            const commentText = element.querySelector('.small').textContent;
-            existingComments.push({
-                id: Math.floor(Math.random() * 1000),
-                post_id: postId,
-                user_id: userId,
-                content: commentText,
-                created_at: new Date(Date.now() - 60000).toISOString() // 1 minute ago
-            });
-        });
-    }
-    
-    // Add the new comment to the list
-    existingComments.push(newComment);
-    
-    // Render all comments
-    renderComments(postId, existingComments);
+    // Update UI immediately
+    addCommentToUI(postId, newComment);
     
     // Clear the input field
     inputElement.value = '';
     
     // Show success toast
     showToast('Success', 'Comment added successfully');
+    
+    // Try to save to Supabase in the background
+    if (typeof supabaseClient !== 'undefined') {
+        try {
+            console.log(`Saving comment to post ${postId} in Supabase`);
+            
+            const { data, error } = await supabaseClient
+                .from('comments')
+                .insert({
+                    post_id: postId,
+                    user_id: userId,
+                    content: content,
+                    created_at: new Date().toISOString()
+                });
+                
+            if (error) {
+                console.error('Error saving comment to Supabase:', error);
+            } else {
+                console.log('Comment saved to Supabase:', data);
+            }
+        } catch (error) {
+            console.error('Error with Supabase comment insert:', error);
+        }
+    }
 }
 
-// CSS for comments section (add this to your style.css file)
-/*
-.comments-section {
-    border-top: 1px solid #eee;
-    padding-top: 12px;
+// Helper function to add a comment to the UI
+function addCommentToUI(postId, comment) {
+    const commentsContainer = document.querySelector(`#post-${postId} .comments-list`);
+    if (!commentsContainer) return;
+    
+    // Remove "No comments yet" message if it exists
+    const noCommentsMsg = commentsContainer.querySelector('.text-muted');
+    if (noCommentsMsg) {
+        commentsContainer.innerHTML = '';
+    }
+    
+    // Create a new comment element
+    const commentEl = document.createElement('div');
+    commentEl.className = 'comment d-flex mb-2';
+    commentEl.innerHTML = `
+        <div class="user-avatar bg-light text-dark me-2" style="width: 28px; height: 28px; font-size: 12px;">
+            ${getInitials(comment.user_id)}
+        </div>
+        <div>
+            <div class="fw-bold small">${comment.user_id}</div>
+            <div class="small">${comment.content}</div>
+            <div class="text-muted x-small">Just now</div>
+        </div>
+    `;
+    
+    // Add to comments container
+    commentsContainer.appendChild(commentEl);
 }
-
-.comments-list {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 10px;
-}
-
-.comment {
-    padding-bottom: 8px;
-    border-bottom: 1px solid #f0f0f0;
-    margin-bottom: 8px;
-}
-
-.comment:last-child {
-    border-bottom: none;
-}
-
-.x-small {
-    font-size: 0.7rem;
-}
-*/
