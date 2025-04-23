@@ -2,7 +2,7 @@
 
 ## Overview
 
-Campaign War Room is an email-to-forum system that automatically converts incoming emails into actionable posts. The platform provides a centralized location for your team to manage, respond to, and track action items derived from various digital communications sources.
+Campaign War Room is an email-to-forum system that automatically converts incoming emails from Internet Bot listeners, into actionable posts. The platform provides a centralized location for your team to manage, respond to, and track action items derived from various digital communications sources.
 
 ## Getting Started
 
