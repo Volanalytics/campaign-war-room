@@ -2,13 +2,13 @@
 
 ## Overview
 
-Campaign War Room is an email-to-forum system that automatically converts incoming emails into actionable posts. The platform provides a centralized location for your team to manage, respond to, and track action items derived from email communications.
+Campaign War Room is an email-to-forum system that automatically converts incoming emails into actionable posts. The platform provides a centralized location for your team to manage, respond to, and track action items derived from various digital communications sources.
 
 ## Getting Started
 
 ### Accessing the System
 
-1. Open your web browser and navigate to your Campaign War Room installation URL
+1. Open your web browser and navigate to your Campaign War Room URL
 2. The main interface will load, displaying the Action Feed with current posts
 
 ### Understanding the Interface
@@ -27,11 +27,11 @@ The left sidebar contains:
   - Green dot: Team member is currently online
   - No dot: Team member is offline
 
-- **Email Inbox Status**: Shows the connected email account and status (info@voterdatahouse.com)
+- **Email Inbox Status**: Shows the connected email account and status (i.e. info@voterdatahouse.com)
 
-#### Action Feed
+#### Real-time Feeds
 
-The main content area (Action Feed) displays posts with:
+The main content area (Real-time Feeds) displays posts with:
 
 - Category badges
 - Status indicators (New, Completed)
