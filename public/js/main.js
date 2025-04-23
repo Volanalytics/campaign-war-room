@@ -19,6 +19,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add comments to posts after they load
     setTimeout(addCommentsToExistingPosts, 1000);
+    
+    // Set up team assignment functionality
+    const confirmAssignButton = document.getElementById('confirmAssignButton');
+    if (confirmAssignButton) {
+        confirmAssignButton.addEventListener('click', confirmAssignment);
+    }
+    
+    // Load team members when the page loads
+    loadTeamMembers();
 });
 
 // Function to set up modal event handlers
@@ -493,7 +502,7 @@ function generateActionWidget(post) {
                 <div class="mb-3">
                     <p>Share this announcement on your social platforms:</p>
                     <div class="p-2 border rounded bg-light">
-                        ${shareText ? decodeURIComponent(shareText) : post.content}
+                        ${decodeURIComponent(shareText)}
                     </div>
                 </div>
                 <div class="d-flex gap-2">
@@ -540,7 +549,7 @@ function generateActionWidget(post) {
     return widgetHTML;
 }
 
-// Function to format dates
+// Function to format dates (Updated to use local time)
 function formatDate(dateString) {
     const date = new Date(dateString);
     const now = new Date();
@@ -548,6 +557,7 @@ function formatDate(dateString) {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) {
+        // Today - use local time format
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
         return `Today at ${hours}:${minutes}`;
@@ -582,7 +592,7 @@ function renderPosts(posts) {
         }
         
         html += `
-            <div class="card post-card" id="post-${post.id}">
+            <div class="card post-card" id="post-${post.id}" data-post-id="${post.id}">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <div>
                         ${statusBadge}
@@ -763,9 +773,239 @@ function updatePostStatusUI(postId, status) {
     }
 }
 
-// Function to assign to team (stub for now)
+// Global variable to store team members data
+let teamMembers = [];
+
+// Function to load team members from the sidebar
+function loadTeamMembers() {
+    teamMembers = [];
+    
+    // Get team members from the sidebar
+    const teamMemberElements = document.querySelectorAll('#team-members .sidebar-item');
+    
+    teamMemberElements.forEach((element, index) => {
+        const avatar = element.querySelector('.user-avatar');
+        const name = element.querySelector('span').textContent.trim();
+        const role = name.includes('(') ? name.split('(')[1].replace(')', '') : 'Team Member';
+        const displayName = name.includes('(') ? name.split('(')[0].trim() : name;
+        const isOnline = element.querySelector('.status-indicator') !== null;
+        
+        const bgClass = avatar.className.match(/bg-(\w+)/);
+        const color = bgClass ? bgClass[1] : 'secondary';
+        
+        teamMembers.push({
+            id: index + 1,
+            name: displayName,
+            role: role,
+            avatar: avatar.textContent.trim(),
+            online: isOnline,
+            color: color
+        });
+    });
+    
+    return teamMembers;
+}
+
+// Function to handle clicking "Assign to Team" button
 function assignToTeam(postId) {
-    showToast('Info', `Post ${postId} ready to be assigned. Team selection would open here.`);
+    // Load team members if not already loaded
+    if (teamMembers.length === 0) {
+        loadTeamMembers();
+    }
+    
+    // Set the current post ID in the hidden field
+    document.getElementById('currentPostId').value = postId;
+    
+    // Populate team members list
+    populateTeamMembersList();
+    
+    // Show the modal
+    try {
+        const assignModal = new bootstrap.Modal(document.getElementById('assignTeamModal'));
+        assignModal.show();
+    } catch (error) {
+        console.error('Error showing modal:', error);
+        
+        // Fallback: try direct manipulation if Bootstrap API fails
+        const modal = document.getElementById('assignTeamModal');
+        if (modal) {
+            modal.classList.add('show');
+            modal.style.display = 'block';
+            document.body.classList.add('modal-open');
+            
+            // Add backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            document.body.appendChild(backdrop);
+        }
+    }
+}
+
+// Function to populate team members list in the modal
+function populateTeamMembersList() {
+    const teamMembersList = document.getElementById('teamMembersList');
+    
+    // Clear previous content
+    teamMembersList.innerHTML = '';
+    
+    // Add each team member as a selectable option
+    teamMembers.forEach(member => {
+        const memberOption = document.createElement('div');
+        memberOption.className = 'form-check d-flex align-items-center p-2 border rounded mb-2';
+        memberOption.innerHTML = `
+          <input class="form-check-input me-3" type="checkbox" value="${member.id}" id="member${member.id}">
+          <label class="form-check-label d-flex align-items-center flex-grow-1" for="member${member.id}">
+            <div class="position-relative me-2">
+              <div class="user-avatar bg-${member.color}" style="width: 36px; height: 36px;">${member.avatar}</div>
+              ${member.online ? '<div class="status-indicator"></div>' : ''}
+            </div>
+            <div>
+              <div class="fw-bold">${member.name}</div>
+              <div class="text-muted small">${member.role}</div>
+            </div>
+          </label>
+        `;
+        teamMembersList.appendChild(memberOption);
+        
+        // Add hover effect
+        memberOption.addEventListener('mouseenter', () => {
+            memberOption.classList.add('bg-light');
+        });
+        
+        memberOption.addEventListener('mouseleave', () => {
+            memberOption.classList.remove('bg-light');
+        });
+    });
+}
+
+// Function to handle the assignment confirmation
+function confirmAssignment() {
+    const postId = document.getElementById('currentPostId').value;
+    const assignmentNote = document.getElementById('assignmentNote').value.trim();
+    const selectedMembers = [];
+    
+    // Get all selected team members
+    document.querySelectorAll('#teamMembersList input[type="checkbox"]:checked').forEach(checkbox => {
+        const memberId = parseInt(checkbox.value);
+        const member = teamMembers.find(m => m.id === memberId);
+        if (member) {
+            selectedMembers.push(member);
+        }
+    });
+    
+    if (selectedMembers.length === 0) {
+        // Show error if no team members selected
+        showToast('Warning', 'Please select at least one team member to assign.');
+        return;
+    }
+    
+    // In a real implementation, this would save to a database
+    // For now, we'll update the UI to show assignment
+    updatePostAssignment(postId, selectedMembers, assignmentNote);
+    
+    // Close the modal
+    try {
+        bootstrap.Modal.getInstance(document.getElementById('assignTeamModal')).hide();
+    } catch (error) {
+        console.error('Error hiding modal:', error);
+        
+        // Fallback if Bootstrap API fails
+        closeModal('assignTeamModal');
+    }
+    
+    // Show success message
+    showToast('Assignment Complete', `Task assigned to ${selectedMembers.map(m => m.name).join(', ')}`);
+}
+
+// Function to update the post UI after assignment
+function updatePostAssignment(postId, assignedMembers, note) {
+    const postCard = document.getElementById(`post-${postId}`);
+    if (!postCard) return;
+    
+    // Find or create assignment section
+    let assignmentSection = postCard.querySelector('.assignment-section');
+    if (!assignmentSection) {
+        const actionWidget = postCard.querySelector('.action-widget');
+        if (!actionWidget) return;
+        
+        assignmentSection = document.createElement('div');
+        assignmentSection.className = 'assignment-section mt-3 pt-3 border-top';
+        actionWidget.appendChild(assignmentSection);
+    }
+    
+    // Update assignment section content
+    assignmentSection.innerHTML = `
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-people-fill text-primary me-2"></i>
+          <strong>Assigned to:</strong>
+        </div>
+        <div class="d-flex flex-wrap mb-2">
+          ${assignedMembers.map(member => `
+            <div class="d-flex align-items-center me-3 mb-2">
+              <div class="position-relative me-1">
+                <div class="user-avatar bg-${member.color}" style="width: 28px; height: 28px; font-size: 0.8em;">${member.avatar}</div>
+                ${member.online ? '<div class="status-indicator"></div>' : ''}
+              </div>
+              <span class="small">${member.name}</span>
+            </div>
+          `).join('')}
+        </div>
+        ${note ? `<div class="p-2 bg-light rounded small"><i class="bi bi-quote me-1"></i>${note}</div>` : ''}
+    `;
+    
+    // Update assignment button
+    const assignButtons = postCard.querySelectorAll('button');
+    assignButtons.forEach(button => {
+        if (button.textContent.includes('Assign to Team')) {
+            button.innerHTML = '<i class="bi bi-people"></i> Reassign';
+        }
+    });
+    
+    // Add status badge to post if not already there
+    const headerDiv = postCard.querySelector('.card-header div:first-child');
+    if (headerDiv) {
+        let hasAssignedBadge = Array.from(headerDiv.querySelectorAll('.badge'))
+            .some(badge => badge.textContent.trim() === 'Assigned');
+            
+        if (!hasAssignedBadge) {
+            const assignedBadge = document.createElement('span');
+            assignedBadge.className = 'badge bg-info me-1';
+            assignedBadge.textContent = 'Assigned';
+            
+            // Insert after any existing badges
+            const firstBadge = headerDiv.querySelector('.badge');
+            if (firstBadge) {
+                firstBadge.insertAdjacentElement('afterend', assignedBadge);
+            } else {
+                headerDiv.prepend(assignedBadge);
+            }
+        }
+    }
+    
+    // Update in Supabase if available
+    if (typeof supabaseClient !== 'undefined') {
+        try {
+            const assignmentData = {
+                post_id: postId,
+                assigned_to: assignedMembers.map(m => m.id),
+                assignment_note: note,
+                updated_at: new Date().toISOString()
+            };
+            
+            supabaseClient
+                .from('assignments')
+                .upsert(assignmentData)
+                .then(response => {
+                    if (response.error) {
+                        console.error('Error saving assignment to Supabase:', response.error);
+                    } else {
+                        console.log('Assignment saved to Supabase:', response.data);
+                    }
+                });
+        } catch (error) {
+            console.error('Error with Supabase assignment:', error);
+        }
+    }
 }
 
 // Function to send email response
@@ -807,7 +1047,7 @@ function addNewPost(postData) {
     let statusBadge = '<span class="badge bg-success me-1">New</span>';
     
     const postHtml = `
-        <div class="card post-card" id="post-${postData.id}">
+        <div class="card post-card" id="post-${postData.id}" data-post-id="${postData.id}">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <div>
                     ${statusBadge}
