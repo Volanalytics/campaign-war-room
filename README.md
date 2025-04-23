@@ -27,7 +27,7 @@ The left sidebar contains:
   - Green dot: Team member is currently online
   - No dot: Team member is offline
 
-- **Email Inbox Status**: Shows the connected email account and status (info@vpterdatahouse.com)
+- **Email Inbox Status**: Shows the connected email account and status (info@voterdatahouse.com)
 
 #### Action Feed
 
