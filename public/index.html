@@ -302,33 +302,22 @@
                         </div>
                     </div>
                     
-                    <div class="mb-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <strong>CAMPAIGN TEAM</strong>
-                        </div>
-                        <div id="team-members">
-                            <div class="sidebar-item d-flex align-items-center">
-                                <div class="position-relative me-2">
-                                    <div class="user-avatar bg-primary">JD</div>
-                                    <div class="status-indicator"></div>
-                                </div>
-                                <span>Jessica Davis (Campaign Manager)</span>
-                            </div>
-                            <div class="sidebar-item d-flex align-items-center">
-                                <div class="position-relative me-2">
-                                    <div class="user-avatar bg-success">MT</div>
-                                    <div class="status-indicator"></div>
-                                </div>
-                                <span>Mike Thompson (Field Director)</span>
-                            </div>
-                            <div class="sidebar-item d-flex align-items-center">
-                                <div class="position-relative me-2">
-                                    <div class="user-avatar bg-info">SJ</div>
-                                </div>
-                                <span>Sarah Jenkins (Policy Advisor)</span>
-                            </div>
-                        </div>
-                    </div>
+<!-- Replace lines 309-330 in public/index.html -->
+<div class="mb-4">
+    <div class="d-flex align-items-center mb-3">
+        <strong>CAMPAIGN TEAM</strong>
+    </div>
+    <div id="team-members">
+        <!-- Loading state -->
+        <div id="team-loading" class="text-center p-3">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading team...</span>
+            </div>
+            <p class="small text-muted mt-1">Loading team members...</p>
+        </div>
+        <!-- Team members will be loaded here dynamically -->
+    </div>
+</div>
                     
                     <div class="mt-auto">
                         <div class="border-top pt-3">
