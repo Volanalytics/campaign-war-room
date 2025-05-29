@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
         confirmAssignButton.addEventListener('click', confirmAssignment);
     }
     
-    // Load team members when the page loads
-    loadTeamMembers();
+// Load real team members when the page loads
+setTimeout(loadRealTeamMembers, 1000);
 });
 
 // Function to load real team members from Supabase
