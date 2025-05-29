@@ -32,10 +32,21 @@ setTimeout(loadRealTeamMembers, 1000);
 
 // Function to load real team members from Supabase
 async function loadRealTeamMembers() {
+    console.log('Loading real team members...');
     const teamContainer = document.getElementById('team-members');
+ // Force clear any existing content first
+    if (teamContainer) {
+        teamContainer.innerHTML = '<div id="team-loading" class="text-center p-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><p class="small text-muted mt-1">Loading team members...</p></div>';
+    }
     const teamLoading = document.getElementById('team-loading');
+        if (!teamContainer) {
+        console.error('team-members container not found');
+        return;
+    }
     
+    console.log('team-members container found:', teamContainer);
     try {
+        console.log('Fetching approved users from Supabase...');
         // Fetch approved users from the profiles table
         const { data: teamMembers, error } = await supabaseClient
             .from('profiles')
