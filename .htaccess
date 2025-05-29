@@ -4,15 +4,17 @@ RewriteEngine On
 # Set the base directory for the rewrites
 RewriteBase /
 
-# Serve files from public directory if they exist
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
-RewriteRule ^(.*)$ public/$1 [L]
+# If the request is for an actual file or directory, don't rewrite
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
 
 # Route API requests
 RewriteRule ^api/posts$ server/api/api.php [L]
 RewriteRule ^api/mark-complete$ server/api/api.php [L]
+
+# Allow specific HTML files
+RewriteRule ^signup\.html$ public/signup.html [L]
 
 # If not found, serve the index.html from public directory
 RewriteRule ^ public/index.html [L]
