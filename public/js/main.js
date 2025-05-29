@@ -30,6 +30,145 @@ document.addEventListener('DOMContentLoaded', function() {
     loadTeamMembers();
 });
 
+// Function to load real team members from Supabase
+async function loadRealTeamMembers() {
+    const teamContainer = document.getElementById('team-members');
+    const teamLoading = document.getElementById('team-loading');
+    
+    try {
+        // Fetch approved users from the profiles table
+        const { data: teamMembers, error } = await supabaseClient
+            .from('profiles')
+            .select('id, full_name, email, role, created_at')
+            .eq('approved', true)
+            .order('created_at', { ascending: true })
+            .limit(10); // Limit to first 10 team members
+        
+        if (error) {
+            throw error;
+        }
+        
+        // Hide loading spinner
+        if (teamLoading) {
+            teamLoading.style.display = 'none';
+        }
+        
+        // Clear existing content
+        teamContainer.innerHTML = '';
+        
+        if (teamMembers && teamMembers.length > 0) {
+            teamMembers.forEach((member, index) => {
+                const initials = getInitialsFromName(member.full_name);
+                const displayName = member.full_name || member.email.split('@')[0];
+                const roleDisplay = member.role === 'admin' ? 'Administrator' : 'Team Member';
+                
+                // Create color classes for avatars (cycling through Bootstrap colors)
+                const colors = ['primary', 'success', 'info', 'warning', 'danger', 'secondary'];
+                const colorClass = colors[index % colors.length];
+                
+                // Determine if user is "online" (just joined recently - within last 7 days)
+                const isRecent = isRecentUser(member.created_at);
+                
+                const memberElement = document.createElement('div');
+                memberElement.className = 'sidebar-item d-flex align-items-center';
+                memberElement.innerHTML = `
+                    <div class="position-relative me-2">
+                        <div class="user-avatar bg-${colorClass}">${initials}</div>
+                        ${isRecent ? '<div class="status-indicator"></div>' : ''}
+                    </div>
+                    <span>${displayName} (${roleDisplay})</span>
+                `;
+                
+                teamContainer.appendChild(memberElement);
+            });
+        } else {
+            // No team members found
+            teamContainer.innerHTML = `
+                <div class="text-center text-muted p-3">
+                    <p class="mb-0">No approved team members yet</p>
+                </div>
+            `;
+        }
+        
+        // Update global teamMembers array for assignment functionality
+        updateGlobalTeamMembers(teamMembers);
+        
+    } catch (error) {
+        console.error('Error loading team members:', error);
+        
+        // Hide loading spinner
+        if (teamLoading) {
+            teamLoading.style.display = 'none';
+        }
+        
+        // Show error message
+        teamContainer.innerHTML = `
+            <div class="text-center text-muted p-3">
+                <p class="mb-0 text-danger">Error loading team members</p>
+            </div>
+        `;
+    }
+}
+
+// Helper function to get initials from full name
+function getInitialsFromName(fullName) {
+    if (!fullName) return '??';
+    
+    const nameParts = fullName.trim().split(' ');
+    if (nameParts.length === 1) {
+        return nameParts[0].substring(0, 2).toUpperCase();
+    }
+    
+    return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+}
+
+// Helper function to check if user joined recently (within 7 days)
+function isRecentUser(createdAt) {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const diffTime = Math.abs(now - created);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays <= 7; // Show as "online" if joined within last 7 days
+}
+
+// Update the global teamMembers array for assignment functionality
+function updateGlobalTeamMembers(dbTeamMembers) {
+    if (typeof window.teamMembers !== 'undefined') {
+        window.teamMembers = dbTeamMembers.map((member, index) => {
+            const colors = ['primary', 'success', 'info', 'warning', 'danger', 'secondary'];
+            const initials = getInitialsFromName(member.full_name);
+            const displayName = member.full_name || member.email.split('@')[0];
+            const roleDisplay = member.role === 'admin' ? 'Administrator' : 'Team Member';
+            
+            return {
+                id: member.id,
+                name: displayName,
+                role: roleDisplay,
+                avatar: initials,
+                online: isRecentUser(member.created_at),
+                color: colors[index % colors.length]
+            };
+        });
+    }
+}
+
+// Call this function when the page loads and when users are approved
+document.addEventListener('DOMContentLoaded', function() {
+    // Load team members after a short delay to ensure Supabase is initialized
+    setTimeout(loadRealTeamMembers, 1000);
+});
+
+// Refresh team members when admin approves new users
+if (typeof window.approveUser === 'function') {
+    const originalApproveUser = window.approveUser;
+    window.approveUser = async function(userId) {
+        await originalApproveUser(userId);
+        // Refresh team members after approval
+        setTimeout(loadRealTeamMembers, 500);
+    };
+}
+
 // Function to set up modal event handlers
 function setupModalEvents() {
     // Get all modals
