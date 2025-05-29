@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Action Hub - Sign Up</title>
+    <title>Campaign War Room - Sign Up</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
@@ -85,7 +85,7 @@
     <div class="signup-container">
         <div class="card">
             <div class="card-header">
-                <h3>Action Hub</h3>
+                <h3>Campaign War Room</h3>
                 <p class="mb-0">Create your account</p>
             </div>
             <div class="card-body">
@@ -149,7 +149,7 @@
                 </form>
                 
                 <div class="signup-footer">
-                    <p>Already have an account? <a href="/login.html">Sign in</a></p>
+                    <p>Already have an account? <a href="/index.html">Sign in</a></p>
                 </div>
             </div>
         </div>
@@ -165,19 +165,19 @@
                 </div>
                 <div class="modal-body">
                     <h5>1. Acceptance of Terms</h5>
-                    <p>By accessing and using the Action Hub, you agree to be bound by these Terms and Conditions.</p>
+                    <p>By accessing and using the Campaign War Room, you agree to be bound by these Terms and Conditions.</p>
                     
                     <h5>2. User Accounts</h5>
                     <p>You are responsible for maintaining the confidentiality of your account and password. You agree to accept responsibility for all activities that occur under your account.</p>
                     
                     <h5>3. Privacy</h5>
-                    <p>Your use of the Action Hub is subject to our Privacy Policy, which governs how we collect, use, and disclose information.</p>
+                    <p>Your use of the Campaign War Room is subject to our Privacy Policy, which governs how we collect, use, and disclose information.</p>
                     
                     <h5>4. Content</h5>
-                    <p>You are solely responsible for any content you post, submit, or display on the Action Hub.</p>
+                    <p>You are solely responsible for any content you post, submit, or display on the Campaign War Room.</p>
                     
                     <h5>5. Termination</h5>
-                    <p>We reserve the right to terminate your account and access to the Action Hub at our sole discretion, without notice, for conduct that we believe violates these Terms and Conditions or is harmful to other users, us, or third parties, or for any other reason.</p>
+                    <p>We reserve the right to terminate your account and access to the Campaign War Room at our sole discretion, without notice, for conduct that we believe violates these Terms and Conditions.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -210,6 +210,10 @@
         </div>
     </div>
 
+    <!-- Include Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="/js/config.js"></script>
+    
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -261,7 +265,7 @@
             
             // Go to login button in success modal
             document.getElementById('goToLogin').addEventListener('click', function() {
-                window.location.href = '/login.html';
+                window.location.href = '/index.html';
             });
             
             // Handle signup form submission
