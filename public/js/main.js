@@ -32,21 +32,10 @@ setTimeout(loadRealTeamMembers, 1000);
 
 // Function to load real team members from Supabase
 async function loadRealTeamMembers() {
-    console.log('Loading real team members...');
     const teamContainer = document.getElementById('team-members');
- // Force clear any existing content first
-    if (teamContainer) {
-        teamContainer.innerHTML = '<div id="team-loading" class="text-center p-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><p class="small text-muted mt-1">Loading team members...</p></div>';
-    }
     const teamLoading = document.getElementById('team-loading');
-        if (!teamContainer) {
-        console.error('team-members container not found');
-        return;
-    }
     
-    console.log('team-members container found:', teamContainer);
     try {
-        console.log('Fetching approved users from Supabase...');
         // Fetch approved users from the profiles table
         const { data: teamMembers, error } = await supabaseClient
             .from('profiles')
@@ -119,6 +108,65 @@ async function loadRealTeamMembers() {
             </div>
         `;
     }
+}
+
+// Helper function to get initials from full name
+function getInitialsFromName(fullName) {
+    if (!fullName) return '??';
+    
+    const nameParts = fullName.trim().split(' ');
+    if (nameParts.length === 1) {
+        return nameParts[0].substring(0, 2).toUpperCase();
+    }
+    
+    return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+}
+
+// Helper function to check if user joined recently (within 7 days)
+function isRecentUser(createdAt) {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const diffTime = Math.abs(now - created);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays <= 7; // Show as "online" if joined within last 7 days
+}
+
+// Update the global teamMembers array for assignment functionality
+function updateGlobalTeamMembers(dbTeamMembers) {
+    if (typeof window.teamMembers !== 'undefined') {
+        window.teamMembers = dbTeamMembers.map((member, index) => {
+            const colors = ['primary', 'success', 'info', 'warning', 'danger', 'secondary'];
+            const initials = getInitialsFromName(member.full_name);
+            const displayName = member.full_name || member.email.split('@')[0];
+            const roleDisplay = member.role === 'admin' ? 'Administrator' : 'Team Member';
+            
+            return {
+                id: member.id,
+                name: displayName,
+                role: roleDisplay,
+                avatar: initials,
+                online: isRecentUser(member.created_at),
+                color: colors[index % colors.length]
+            };
+        });
+    }
+}
+
+// Call this function when the page loads and when users are approved
+document.addEventListener('DOMContentLoaded', function() {
+    // Load team members after a short delay to ensure Supabase is initialized
+    setTimeout(loadRealTeamMembers, 1000);
+});
+
+// Refresh team members when admin approves new users
+if (typeof window.approveUser === 'function') {
+    const originalApproveUser = window.approveUser;
+    window.approveUser = async function(userId) {
+        await originalApproveUser(userId);
+        // Refresh team members after approval
+        setTimeout(loadRealTeamMembers, 500);
+    };
 }
 
 // Helper function to get initials from full name
