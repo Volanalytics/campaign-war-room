@@ -1,6 +1,6 @@
 // Main JavaScript file
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Action Hub initialized');
+    console.log('CWR initialized');
     
     // Fetch posts on load
     fetchPosts();
@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
 // Load real team members when the page loads
-setTimeout(loadRealTeamMembers, 1000);
+    console.log('About to load real team members...');
+    setTimeout(loadRealTeamMembers, 2000);
 });
 
 // Function to load real team members from Supabase
