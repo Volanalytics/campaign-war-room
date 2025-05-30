@@ -738,9 +738,13 @@ function generateActionWidget(post) {
 
 // Function to format dates (Updated to use local time)
 function formatDate(dateString) {
-    // Patch: If dateString lacks "Z" or timezone, add "Z"
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateString)) {
-        dateString += "Z";
+    // If dateString has no timezone/Z, treat it as UTC by adding 'Z'
+    if (
+        typeof dateString === 'string' &&
+        dateString.length === 19 && // "YYYY-MM-DDTHH:MM:SS"
+        !dateString.endsWith('Z')
+    ) {
+        dateString += 'Z';
     }
     const date = new Date(dateString);
     const now = new Date();
