@@ -738,6 +738,11 @@ function generateActionWidget(post) {
 
 // Function to format dates (Updated to use local time)
 function formatDate(dateString) {
+    console.log('Raw dateString:', dateString);
+    const date = new Date(dateString);
+    console.log('Parsed Date:', date);
+    console.log('Locale string:', date.toLocaleString());
+    console.log('ISO string:', date.toISOString());
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateString)) {
         dateString += 'Z';
     }
