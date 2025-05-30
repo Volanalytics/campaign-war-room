@@ -1432,7 +1432,7 @@ async function loadComments(postId) {
         if (typeof supabaseClient !== 'undefined') {
             try {
                 // Try to fetch real comments from Supabase
-                console.log(`Fetching comments for post ${postId} from Supabase`);
+                // console.log(`Fetching comments for post ${postId} from Supabase`);
                 const { data, error } = await supabaseClient
                     .from('comments')
                     .select('*')
@@ -1440,7 +1440,7 @@ async function loadComments(postId) {
                     .order('created_at', { ascending: true });
                 
                 if (error) {
-                    console.error('Error fetching comments from Supabase:', error);
+                  //  console.error('Error fetching comments from Supabase:', error);
                     // Fall back to sample comments
                     renderSampleComments(postId);
                 } else if (data && data.length > 0) {
