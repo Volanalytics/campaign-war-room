@@ -738,20 +738,22 @@ function generateActionWidget(post) {
 
 // Function to format dates (Updated to use local time)
 function formatDate(dateString) {
-    const date = new Date(dateString); // Always parse as ISO string
+    // Patch: If dateString lacks "Z" or timezone, add "Z"
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateString)) {
+        dateString += "Z";
+    }
+    const date = new Date(dateString);
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-        // Today - show time in local format
         return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffDays === 1) {
         return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffDays < 7) {
         return `${date.toLocaleString(undefined, { weekday: 'long' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else {
-        // Show date and time in user's locale
         return date.toLocaleString();
     }
 }
