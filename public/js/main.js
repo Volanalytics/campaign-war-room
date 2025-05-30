@@ -738,22 +738,21 @@ function generateActionWidget(post) {
 
 // Function to format dates (Updated to use local time)
 function formatDate(dateString) {
-    const date = new Date(dateString);
+    const date = new Date(dateString); // Always parse as ISO string
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
-        // Today - use local time format
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `Today at ${hours}:${minutes}`;
+        // Today - show time in local format
+        return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffDays === 1) {
-        return 'Yesterday';
+        return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffDays < 7) {
-        return date.toLocaleString('en-us', { weekday: 'long' });
+        return `${date.toLocaleString(undefined, { weekday: 'long' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else {
-        return date.toLocaleDateString();
+        // Show date and time in user's locale
+        return date.toLocaleString();
     }
 }
 
