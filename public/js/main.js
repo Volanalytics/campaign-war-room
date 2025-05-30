@@ -738,28 +738,27 @@ function generateActionWidget(post) {
 
 // Function to format dates (Updated to use local time)
 function formatDate(dateString) {
-    // If dateString has no timezone/Z, treat it as UTC by adding 'Z'
-    if (
-        typeof dateString === 'string' &&
-        dateString.length === 19 && // "YYYY-MM-DDTHH:MM:SS"
-        !dateString.endsWith('Z')
-    ) {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateString)) {
         dateString += 'Z';
     }
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-        return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    } else if (diffDays === 1) {
-        return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    } else if (diffDays < 7) {
-        return `${date.toLocaleString(undefined, { weekday: 'long' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    } else {
-        return date.toLocaleString();
-    }
+    // Parse as UTC
+    const utcDate = new Date(dateString);
+    // Convert to local time by creating a new Date using local components
+    const localDate = new Date(
+        utcDate.getUTCFullYear(),
+        utcDate.getUTCMonth(),
+        utcDate.getUTCDate(),
+        utcDate.getUTCHours(),
+        utcDate.getUTCMinutes(),
+        utcDate.getUTCSeconds()
+    );
+    return localDate.toLocaleString([], { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit'
+    });
 }
 
 // Function to render posts
