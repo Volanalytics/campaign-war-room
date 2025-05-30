@@ -1444,10 +1444,10 @@ async function loadComments(postId) {
                     // Fall back to sample comments
                     renderSampleComments(postId);
                 } else if (data && data.length > 0) {
-                    console.log(`Found ${data.length} comments for post ${postId}`);
+                // console.log(`Found ${data.length} comments for post ${postId}`);
                     renderComments(postId, data);
                 } else {
-                    console.log(`No comments found for post ${postId}`);
+                // console.log(`No comments found for post ${postId}`);
                     renderComments(postId, []);
                 }
             } catch (error) {
@@ -1459,7 +1459,7 @@ async function loadComments(postId) {
             renderSampleComments(postId);
         }
     } catch (error) {
-        console.error(`Error loading comments for post ${postId}:`, error);
+        // console.error(`Error loading comments for post ${postId}:`, error);
         renderSampleComments(postId);
     }
 }
